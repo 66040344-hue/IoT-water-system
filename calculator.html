@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irrigation IoT - Calculator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Fertilizer IoT (Cloud)</div>
+        <div class="nav-links">
+            <a href="index.html">Dashboard</a>
+            <a href="calculator.html" class="active">Calculator</a>
+            <a href="admin.html">Admin</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Durian Needs Calculator</h1>
+        <p class="subtitle">คำนวณปริมาณน้ำและปุ๋ยสำหรับต้นทุเรียนของคุณ (อ้างอิงจากฐานข้อมูล Admin)</p>
+
+        <div class="form-card">
+            <div class="form-group">
+                <label>อายุต้นทุเรียน (ปี)</label>
+                <input type="number" id="age" min="1" max="50" placeholder="เช่น 5">
+            </div>
+            <div class="form-group">
+                <label>ความกว้างทรงพุ่ม (เมตร)</label>
+                <input type="number" id="canopy" min="0.5" max="15" step="0.1" placeholder="เช่น 4.5">
+            </div>
+            <div class="form-group">
+                <label>ระยะการเจริญเติบโต</label>
+                <select id="stage">
+                    <option value="vegetative">ระยะแตกใบอ่อน (Vegetative)</option>
+                    <option value="flowering">ระยะออกดอก (Flowering)</option>
+                    <option value="fruiting">ระยะติดผล (Fruiting)</option>
+                    <option value="post_harvest">ระยะหลังเก็บเกี่ยว (Post Harvest)</option>
+                </select>
+            </div>
+            <button class="btn-submit" onclick="calculateNeeds()">คำนวณ</button>
+        </div>
+
+        <div class="result-box" id="result-box">
+            <h3>ผลการประเมินที่ต้องการ</h3>
+            <div class="value" id="water-result">ปริมาณน้ำ: -- ลิตร/วัน</div>
+            <div class="value" id="fert-result">ปริมาณปุ๋ย: -- กรัม/ต้น</div>
+            <p id="calc-log" style="color:var(--text-muted); margin-top:1rem; font-size:0.9rem;"></p>
+            <br>
+            <button class="btn-submit" style="max-width:300px; background:var(--success);" onclick="autoApply()">ใช้ค่านี้สั่งงานระบบอัตโนมัติ (Coming Soon)</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK & Logic -->
+    <script type="module" src="firebase_config.js"></script>
+    <script type="module">
+        import { db, ref, get } from './firebase_config.js';
+
+        window.calculateNeeds = async function() {
+            const age = parseFloat(document.getElementById('age').value);
+            const canopy = parseFloat(document.getElementById('canopy').value);
+            const stage = document.getElementById('stage').value;
+
+            if(!age || !canopy) {
+                alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+                return;
+            }
+
+            try {
+                // Fetch Rules from Firebase
+                const rulesRef = ref(db, 'admin_rules');
+                const snapshot = await get(rulesRef);
+                
+                if (snapshot.exists()) {
+                    const rules = snapshot.val();
+                    
+                    // Logic Example: 
+                    // Base Water = canopy * rules.base_water_per_sqm
+                    // Base Fert = age * rules.base_fert_per_year
+                    // Stage Multiplier applied to both
+
+                    const baseWater = (canopy * canopy) * (rules.base_water_per_sqm || 5); 
+                    const baseFert = age * (rules.base_fert_per_year || 200);
+                    
+                    const stageMultiplier = rules.stage_multipliers ? (rules.stage_multipliers[stage] || 1) : 1;
+
+                    const finalWater = Math.round(baseWater * stageMultiplier);
+                    const finalFert = Math.round(baseFert * stageMultiplier);
+
+                    document.getElementById('water-result').innerText = `ปริมาณน้ำ: ${finalWater} ลิตร/วัน`;
+                    document.getElementById('fert-result').innerText = `ปริมาณปุ๋ย: ${finalFert} กรัม/ต้น`;
+                    
+                    document.getElementById('result-box').classList.add('visible');
+                    document.getElementById('calc-log').innerText = `อ้างอิงกฎจาก Admin (Multiplier: ${stageMultiplier})`;
+                } else {
+                    alert("ยังไม่มีการตั้งค่าจาก Admin ในระบบ Database");
+                }
+            } catch (error) {
+                console.error("Error fetching rules", error);
+                alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้");
+            }
+        }
+
+        window.autoApply = function() {
+            alert("ระบบ Auto กำลังพัฒนา (จะส่งข้อมูลนี้ไปคำนวณระยะเวลาเปิดวาล์วให้ ESP32)");
+        }
+    </script>
+</body>
+</html>

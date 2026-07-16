@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irrigation IoT - Control Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Fertilizer IoT (Cloud)</div>
+        <div class="nav-links">
+            <a href="index.html" class="active">Dashboard</a>
+            <a href="calculator.html">Calculator</a>
+            <a href="admin.html">Admin</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Device Control Dashboard</h1>
+        <p class="subtitle">ควบคุมปั๊มและวาล์วผ่าน Firebase (สั่งงานได้จากทุกที่)</p>
+
+        <div class="grid">
+            <div class="card pump">
+                <h2>PUMP (Red)</h2>
+                <button class="toggle-btn" id="btn-pump" onclick="toggleDevice('pump')"></button>
+            </div>
+            <div class="card zone1">
+                <h2>ZONE 1 (Green)</h2>
+                <button class="toggle-btn" id="btn-zone1" onclick="toggleDevice('zone1')"></button>
+            </div>
+            <div class="card zone2">
+                <h2>ZONE 2 (Yellow)</h2>
+                <button class="toggle-btn" id="btn-zone2" onclick="toggleDevice('zone2')"></button>
+            </div>
+            <div class="card fert">
+                <h2>FERTILIZER (Blue)</h2>
+                <button class="toggle-btn" id="btn-fert" onclick="toggleDevice('fert')"></button>
+            </div>
+        </div>
+
+        <button class="btn-run" onclick="runSequence()">▶ Run Auto Sequence</button>
+
+        <div class="status-box" id="log">Firebase Status: Connecting...</div>
+    </div>
+
+    <!-- Firebase SDK & Logic -->
+    <script type="module" src="firebase_config.js"></script>
+    <script type="module">
+        import { db, ref, onValue, set, update } from './firebase_config.js';
+
+        const deviceRef = ref(db, 'device_control');
+        let currentStates = { pump: false, zone1: false, zone2: false, fert: false, run_sequence: false };
+
+        function logMsg(msg) {
+            document.getElementById('log').innerText = msg;
+        }
+
+        // Listen for real-time changes from Firebase
+        onValue(deviceRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                currentStates = data;
+                document.getElementById('btn-pump').className = 'toggle-btn ' + (data.pump ? 'active' : '');
+                document.getElementById('btn-zone1').className = 'toggle-btn ' + (data.zone1 ? 'active' : '');
+                document.getElementById('btn-zone2').className = 'toggle-btn ' + (data.zone2 ? 'active' : '');
+                document.getElementById('btn-fert').className = 'toggle-btn ' + (data.fert ? 'active' : '');
+                logMsg("Firebase Connected & Synced");
+            } else {
+                // Initialize default state if empty
+                set(deviceRef, { pump: false, zone1: false, zone2: false, fert: false, run_sequence: false });
+            }
+        }, (error) => {
+            logMsg("Error connecting to Firebase: " + error.message);
+        });
+
+        // Global functions for HTML onclick
+        window.toggleDevice = function(device) {
+            const newState = !currentStates[device];
+            // Update UI optimistically
+            document.getElementById(`btn-${device}`).classList.toggle('active');
+            
+            // Send to Firebase
+            update(deviceRef, { [device]: newState })
+                .then(() => logMsg(`Set ${device.toUpperCase()} to ${newState ? 'ON' : 'OFF'}`))
+                .catch((err) => logMsg("Error updating " + device));
+        }
+
+        window.runSequence = function() {
+            logMsg('Initiating automatic sequence via Cloud...');
+            update(deviceRef, { run_sequence: true })
+                .then(() => {
+                    setTimeout(() => {
+                        // Reset flag after 2 seconds
+                        update(deviceRef, { run_sequence: false });
+                    }, 2000);
+                });
+        }
+    </script>
+</body>
+</html>
