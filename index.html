@@ -1,102 +1,705 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Irrigation IoT - Control Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .badge-running {
+            background: var(--danger);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: none;
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            text-align: center;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal h3 {
+            margin-bottom: 1rem;
+        }
+
+        .modal p {
+            color: var(--text);
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+            font-size: 1.05rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .btn-modal {
+            padding: 0.8rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: #000;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-cancel {
+            background: #475569;
+            color: white;
+        }
+
+        .btn-modal:hover {
+            opacity: 0.8;
+            transform: scale(1.02);
+        }
+    </style>
 </head>
+
 <body>
     <nav class="navbar">
-        <div class="logo">Fertilizer IoT (Cloud)</div>
+        <div class="nav-left">
+            <button class="hamburger-btn" onclick="toggleSidebar()">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="logo">Water system control</div>
+        </div>
         <div class="nav-links">
-            <a href="index.html" class="active">Dashboard</a>
-            <a href="calculator.html">Calculator</a>
-            <a href="admin.html">Admin</a>
+            <!-- Legacy hidden by CSS -->
         </div>
     </nav>
 
-    <div class="container">
-        <h1>Device Control Dashboard</h1>
-        <p class="subtitle">ควบคุมปั๊มและวาล์วผ่าน Firebase (สั่งงานได้จากทุกที่)</p>
+    <!-- Sidebar Menu -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo" style="font-size: 1.2rem;">Menu</div>
+            <button class="close-btn" onclick="toggleSidebar()">✕</button>
+        </div>
+        <div class="nav-links-sidebar">
+            <a href="index.html" class="active">ภาพรวม (Dashboard)</a>
+            <a href="control.html">ควบคุม (Control)</a>
+            <a href="calculator.html">คำนวณ (Calculator)</a>
+            <a href="schedule.html">ตั้งเวลา (Schedule)</a>
+            <a href="history.html">ประวัติ (History)</a>
+            <a href="admin.html">ตั้งค่าระบบ (Admin)</a>
+        </div>
+    </div>
+    <div class="container" style="max-width: 1100px; padding: 2rem 1rem;">
 
-        <div class="grid">
-            <div class="card pump">
-                <h2>PUMP (Red)</h2>
-                <button class="toggle-btn" id="btn-pump" onclick="toggleDevice('pump')"></button>
+        <div
+            style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center; margin-bottom: 2rem; width: 100%;">
+            <div>
+                <h1 id="greeting-title"
+                    style="font-size: 2.2rem; color: #111827; margin: 0; font-weight: 700; text-align: left;">
+                    สวัสดีเกษตรกร</h1>
+                <p id="greeting-subtitle"
+                    style="color: #6b7280; margin: 0.5rem 0 0 0; font-size: 1rem; text-align: left;">
+                    ติดตามความคืบหน้าและจัดการฟาร์มของคุณได้ทุกที่ทุกเวลา</p>
             </div>
-            <div class="card zone1">
-                <h2>ZONE 1 (Green)</h2>
-                <button class="toggle-btn" id="btn-zone1" onclick="toggleDevice('zone1')"></button>
-            </div>
-            <div class="card zone2">
-                <h2>ZONE 2 (Yellow)</h2>
-                <button class="toggle-btn" id="btn-zone2" onclick="toggleDevice('zone2')"></button>
-            </div>
-            <div class="card fert">
-                <h2>FERTILIZER (Blue)</h2>
-                <button class="toggle-btn" id="btn-fert" onclick="toggleDevice('fert')"></button>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <div
+                    style="background: #ffffff; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; color: #4b5563; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
+                    <span class="led" id="sys-firebase"
+                        style="background:#ef4444; width:8px; height:8px; display:inline-block; border-radius:50%; margin-right:0.3rem; box-shadow:none;"></span>
+                    <span id="text-firebase" style="color: #ef4444;">Connecting...</span>
+                </div>
+                <div
+                    style="background: #ffffff; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; color: #4b5563; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
+                    <span class="led" id="sys-esp32"
+                        style="background:#ef4444; width:8px; height:8px; display:inline-block; border-radius:50%; margin-right:0.3rem; box-shadow:none;"></span>
+                    <span id="text-esp32" style="color: #ef4444;">Checking...</span>
+                </div>
+                <div
+                    style="background: #ffffff; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; color: #374151; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
+                    📶 <span id="text-wifi">--</span>
+                </div>
             </div>
         </div>
 
-        <button class="btn-run" onclick="runSequence()">▶ Run Auto Sequence</button>
+        <div class="finexy-layout">
 
-        <div class="status-box" id="log">Firebase Status: Connecting...</div>
+            <!-- Left column (Stats) -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+                <!-- 3 Sensors Cards Grid -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem;">
+
+                    <!-- Temp Card -->
+                    <div class="card"
+                        style="padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); background: white; align-items: flex-start;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; width: 100%;">
+                            <span style="color: #6b7280; font-weight: 500; font-size: 0.95rem;">อุณหภูมิ</span>
+                            <div
+                                style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; background: #fee2e2; color: #ef4444;">
+                                🌡️</div>
+                        </div>
+                        <div id="val-temp" style="font-size: 2rem; font-weight: 700; color: #111827;">-- °C</div>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #10b981; font-weight: 600;">↑
+                            Real-time</div>
+                    </div>
+
+                    <!-- Humid Card -->
+                    <div class="card"
+                        style="padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); background: white; align-items: flex-start;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; width: 100%;">
+                            <span style="color: #6b7280; font-weight: 500; font-size: 0.95rem;">ความชื้นอากาศ</span>
+                            <div
+                                style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; background: #e0f2fe; color: #3b82f6;">
+                                💧</div>
+                        </div>
+                        <div id="val-humid" style="font-size: 2rem; font-weight: 700; color: #111827;">-- %</div>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #10b981; font-weight: 600;">↑
+                            Real-time</div>
+                    </div>
+
+                    <!-- Soil Card -->
+                    <div class="card"
+                        style="padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); background: white; align-items: flex-start;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; width: 100%;">
+                            <span style="color: #6b7280; font-weight: 500; font-size: 0.95rem;">ความชื้นดิน</span>
+                            <div
+                                style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; background: #dcfce7; color: #10b981;">
+                                🌱</div>
+                        </div>
+                        <div id="val-soil" style="font-size: 2rem; font-weight: 700; color: #111827;">-- %</div>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #10b981; font-weight: 600;">↑
+                            Real-time</div>
+                    </div>
+                </div>
+
+                <!-- 2 Resources Cards Grid -->
+                <div class="finexy-stats">
+
+                    <!-- Water Today (Accent) -->
+                    <div class="card"
+                        style="padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); background: #f97316; color: white; align-items: flex-start;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; width: 100%;">
+                            <span
+                                style="color: rgba(255,255,255,0.9); font-weight: 500; font-size: 0.95rem;">เวลารดน้ำวันนี้</span>
+                            <div
+                                style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; background: rgba(255,255,255,0.2);">
+                                💦</div>
+                        </div>
+                        <div id="stat-water" style="font-size: 2rem; font-weight: 700;">0 นาที</div>
+                        <div
+                            style="margin-top: 0.5rem; font-size: 0.8rem; font-weight: 600; color: rgba(255,255,255,0.9);">
+                            ทำงาน <span id="stat-sessions">0 ครั้ง</span></div>
+                    </div>
+
+                    <!-- Fertilizer Today (Accent Green) -->
+                    <div class="card"
+                        style="padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); background: #10b981; color: white; align-items: flex-start;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; width: 100%;">
+                            <span
+                                style="color: rgba(255,255,255,0.9); font-weight: 500; font-size: 0.95rem;">ปริมาณปุ๋ยวันนี้</span>
+                            <div
+                                style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; background: rgba(255,255,255,0.2);">
+                                🧪</div>
+                        </div>
+                        <div id="stat-fert" style="font-size: 2rem; font-weight: 700;">0 ลิตร</div>
+                        <div
+                            style="margin-top: 0.5rem; font-size: 0.8rem; font-weight: 600; color: rgba(255,255,255,0.9);">
+                            ให้ปุ๋ยผ่านน้ำ</div>
+                    </div>
+
+                </div>
+
+                <!-- Usage Chart -->
+                <div class="card"
+                    style="padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); background: white; align-items: stretch; margin-top: 0.5rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: #111827;">สถิติการใช้งาน 7 วันย้อนหลัง</h3>
+                    </div>
+                    <div style="position: relative; height: 250px; width: 100%;">
+                        <canvas id="usageChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right column (Weather & Others) -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+                <!-- Weather Card -->
+                <div class="card"
+                    style="padding: 1.5rem; border-radius: 20px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: none; align-items: stretch;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: #1f2937;">พยากรณ์อากาศ</h3>
+                        <a href="#"
+                            style="font-size: 0.85rem; color: #10b981; font-weight: 600; text-decoration: none;">📍
+                            กรุงเทพมหานคร</a>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem;">
+                        <span id="weather-icon"
+                            style="font-size: 3.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">⏳</span>
+                        <div>
+                            <div style="font-size: 0.9rem; color: #4b5563; font-weight: 600; margin-bottom: 0.2rem;">
+                                วันนี้</div>
+                            <div style="display: flex; align-items: baseline; gap: 0.5rem;">
+                                <span id="weather-temp"
+                                    style="font-size: 2.5rem; font-weight: 800; color: #111827; line-height: 1;">--°</span>
+                                <span id="weather-desc"
+                                    style="font-size: 0.95rem; color: #4b5563; font-weight: 500;">กำลังโหลด...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="weather-sun"
+                        style="font-size: 0.9rem; color: #374151; background: rgba(255,255,255,0.7); padding: 0.75rem 1rem; border-radius: 1rem; font-weight: 500; text-align: center;">
+                        🌅 ขึ้น: --:-- น. &nbsp;|&nbsp; 🌇 ตก: --:-- น.
+                    </div>
+                </div>
+
+                <!-- Active Device Card (Hidden by default) -->
+                <div id="active-device-card" class="card"
+                    style="padding: 1.5rem; border-radius: 20px; background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #fbbf24; align-items: stretch; display: none;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: #92400e;">⚡ กำลังทำงาน</h3>
+                        <div
+                            style="width: 12px; height: 12px; background: #ea580c; border-radius: 50%; box-shadow: 0 0 10px #ea580c; animation: pulse 1.5s infinite;">
+                        </div>
+                    </div>
+                    <div id="active-device-details"
+                        style="font-size: 1rem; color: #b45309; font-weight: 500; line-height: 1.6;">
+                        กำลังดึงข้อมูล...
+                    </div>
+                </div>
+
+                <!-- Next Schedule Card -->
+                <div class="card"
+                    style="padding: 1.5rem; border-radius: 20px; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.02); align-items: stretch;">
+                    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: #111827;">รอบรดน้ำถัดไป</h3>
+                    <div
+                        style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 2rem 1.5rem; text-align: center;">
+                        <div id="next-sched-time"
+                            style="font-size: 2.5rem; font-weight: 700; color: #111827; margin-bottom: 0.5rem;">--:--
+                        </div>
+                        <div id="next-sched-date" style="font-size: 0.95rem; color: #6b7280; font-weight: 500;">
+                            ไม่มีคิวตั้งเวลาล่วงหน้า</div>
+                    </div>
+                </div>
+
+                <!-- Manage Farm -->
+                <div class="card"
+                    style="padding: 2rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); background: white; display: flex; flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: #111827;">Control</h3>
+                        <p style="margin: 0 0 1.5rem 0; color: #6b7280; font-size: 0.95rem;">ควบคุมระบบปั๊มน้ำ วาล์ว
+                            และปุ๋ย แบบ Real-time</p>
+                        <button onclick="window.location.href='control.html'"
+                            style="background: #111827; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 2rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem;">
+                            <span>⚙️</span> เปิดหน้าต่างควบคุม
+                        </button>
+                    </div>
+                    <div style="font-size: 6rem; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.1));">🚜</div>
+                </div>
+
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDK & Logic -->
     <script type="module" src="firebase_config.js"></script>
     <script type="module">
-        import { db, ref, onValue, set, update } from './firebase_config.js';
+        import { db, ref, onValue, get } from './firebase_config.js';
 
-        const deviceRef = ref(db, 'device_control');
-        let currentStates = { pump: false, zone1: false, zone2: false, fert: false, run_sequence: false };
+        const connectedRef = ref(db, ".info/connected");
+        const statusRef = ref(db, 'device_status');
+        const sensorRef = ref(db, 'sensors');
+        const historyRef = ref(db, 'history');
+        const scheduleRef = ref(db, 'schedules');
 
-        function logMsg(msg) {
-            document.getElementById('log').innerText = msg;
-        }
+        let esp32LastSeenLocalTime = 0;
 
-        // Listen for real-time changes from Firebase
-        onValue(deviceRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                currentStates = data;
-                document.getElementById('btn-pump').className = 'toggle-btn ' + (data.pump ? 'active' : '');
-                document.getElementById('btn-zone1').className = 'toggle-btn ' + (data.zone1 ? 'active' : '');
-                document.getElementById('btn-zone2').className = 'toggle-btn ' + (data.zone2 ? 'active' : '');
-                document.getElementById('btn-fert').className = 'toggle-btn ' + (data.fert ? 'active' : '');
-                logMsg("Firebase Connected & Synced");
+        // Connection Check
+        onValue(connectedRef, (snap) => {
+            const fbLed = document.getElementById('sys-firebase');
+            const fbText = document.getElementById('text-firebase');
+            if (snap.val() === false) {
+                fbLed.className = 'led';
+                fbLed.style.background = '#ef4444';
+                fbLed.style.boxShadow = 'none';
+                fbText.innerText = 'Disconnected';
+                fbText.style.color = '#ef4444';
             } else {
-                // Initialize default state if empty
-                set(deviceRef, { pump: false, zone1: false, zone2: false, fert: false, run_sequence: false });
+                fbLed.className = 'led on';
+                fbLed.style.background = '';
+                fbLed.style.boxShadow = '';
+                fbText.innerText = 'Connected';
+                fbText.style.color = '#10b981';
             }
-        }, (error) => {
-            logMsg("Error connecting to Firebase: " + error.message);
         });
 
-        // Global functions for HTML onclick
-        window.toggleDevice = function(device) {
-            const newState = !currentStates[device];
-            // Update UI optimistically
-            document.getElementById(`btn-${device}`).classList.toggle('active');
-            
-            // Send to Firebase
-            update(deviceRef, { [device]: newState })
-                .then(() => logMsg(`Set ${device.toUpperCase()} to ${newState ? 'ON' : 'OFF'}`))
-                .catch((err) => logMsg("Error updating " + device));
+        // Listen for ESP32 device_status
+        onValue(statusRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                esp32LastSeenLocalTime = Math.floor(Date.now() / 1000);
+                document.getElementById('text-wifi').innerText = data.wifi_ssid || '--';
+            }
+        });
+
+        // Connection heartbeat loop
+        setInterval(() => {
+            const now = Math.floor(Date.now() / 1000);
+            const espLed = document.getElementById('sys-esp32');
+            const espText = document.getElementById('text-esp32');
+
+            if (esp32LastSeenLocalTime > 0 && (now - esp32LastSeenLocalTime) < 45) {
+                espLed.className = 'led on';
+                espLed.style.background = '';
+                espLed.style.boxShadow = '';
+                espText.innerText = 'Online';
+                espText.style.color = '#10b981';
+            } else {
+                espLed.className = 'led';
+                espLed.style.background = '#ef4444';
+                espLed.style.boxShadow = 'none';
+                espText.innerText = 'Offline';
+                espText.style.color = '#ef4444';
+            }
+        }, 1000);
+
+        // Fetch Sensor Data (Real or Mock)
+        onValue(sensorRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                document.getElementById('val-temp').innerText = (data.temperature || '--') + ' °C';
+                document.getElementById('val-humid').innerText = (data.humidity || '--') + ' %';
+                document.getElementById('val-soil').innerText = (data.soil_moisture || '--') + ' %';
+            } else {
+                // Mock Data if no sensor data in Firebase
+                document.getElementById('val-temp').innerText = '32.5 °C';
+                document.getElementById('val-humid').innerText = '65 %';
+                document.getElementById('val-soil').innerText = '40 %';
+                console.log("Using mock sensor data");
+            }
+        });
+
+        let usageChart = null;
+
+        // Fetch History for Today's Overview & Chart
+        onValue(historyRef, (snapshot) => {
+            const data = snapshot.val();
+            let count = 0;
+            let waterToday = 0;
+            let fertToday = 0;
+
+            // Chart Data Prep
+            const labels = [];
+            const waterData = [0, 0, 0, 0, 0, 0, 0];
+            const fertData = [0, 0, 0, 0, 0, 0, 0];
+
+            const now = new Date();
+            const dateMap = {};
+
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(now.getDate() - i);
+                const dateStr = d.toLocaleDateString('th-TH', { month: 'short', day: 'numeric' });
+                labels.push(dateStr);
+                dateMap[dateStr] = 6 - i;
+            }
+
+            if (data) {
+                const todayStr = new Date().toLocaleDateString('th-TH');
+
+                Object.values(data).forEach(log => {
+                    const logDateObj = new Date(log.timestamp * 1000);
+
+                    // Today's Stats
+                    if (logDateObj.toLocaleDateString('th-TH') === todayStr) {
+                        count++;
+                        waterToday += (log.water_duration_min || 0);
+                        fertToday += (log.fert_amount_l || 0);
+                    }
+
+                    // Chart Stats
+                    const shortDate = logDateObj.toLocaleDateString('th-TH', { month: 'short', day: 'numeric' });
+                    if (dateMap[shortDate] !== undefined) {
+                        const index = dateMap[shortDate];
+                        waterData[index] += (log.water_duration_min || 0);
+                        fertData[index] += (log.fert_amount_l || 0);
+                    }
+                });
+            }
+
+            document.getElementById('stat-sessions').innerText = count + " ครั้ง";
+            if (waterToday >= 60) {
+                const hrs = Math.floor(waterToday / 60);
+                const mins = waterToday % 60;
+                document.getElementById('stat-water').innerText = hrs + " ชม. " + (mins > 0 ? mins + " นาที" : "");
+            } else {
+                document.getElementById('stat-water').innerText = waterToday + " นาที";
+            }
+            document.getElementById('stat-fert').innerText = fertToday + " ลิตร";
+
+            // Render Chart
+            const ctx = document.getElementById('usageChart').getContext('2d');
+            if (usageChart) {
+                usageChart.data.datasets[0].data = waterData;
+                usageChart.data.datasets[1].data = fertData;
+                usageChart.update();
+            } else {
+                usageChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'เวลารดน้ำ (นาที)',
+                                data: waterData,
+                                backgroundColor: '#f97316',
+                                borderRadius: 4,
+                                barPercentage: 0.7
+                            },
+                            {
+                                label: 'ปริมาณปุ๋ย (ลิตร)',
+                                data: fertData,
+                                backgroundColor: '#10b981',
+                                borderRadius: 4,
+                                barPercentage: 0.7
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#f3f4f6', drawBorder: false }
+                            },
+                            x: {
+                                grid: { display: false, drawBorder: false }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    boxWidth: 8,
+                                    font: { family: "'Outfit', 'Kanit', sans-serif" }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                                titleFont: { family: "'Outfit', 'Kanit', sans-serif" },
+                                bodyFont: { family: "'Outfit', 'Kanit', sans-serif" },
+                                cornerRadius: 8
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        // Fetch Next Schedule
+        onValue(scheduleRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const now = Math.floor(Date.now() / 1000);
+                let upcoming = [];
+                Object.values(data).forEach(job => {
+                    if (job.start_time > now && job.status === 'pending') {
+                        upcoming.push(job.start_time);
+                    }
+                });
+
+                if (upcoming.length > 0) {
+                    upcoming.sort();
+                    const nextDate = new Date(upcoming[0] * 1000);
+                    document.getElementById('next-sched-time').innerText = nextDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                    document.getElementById('next-sched-date').innerText = nextDate.toLocaleDateString('th-TH');
+                } else {
+                    document.getElementById('next-sched-time').innerText = "--:--";
+                    document.getElementById('next-sched-date').innerText = "ไม่มีคิวล่วงหน้า";
+                }
+            } else {
+                document.getElementById('next-sched-time').innerText = "--:--";
+                document.getElementById('next-sched-date').innerText = "ไม่มีคิวล่วงหน้า";
+            }
+        });
+
+        // Listen for Currently Running Job
+        const currentJobRef = ref(db, 'current_job');
+        onValue(currentJobRef, (snapshot) => {
+            const data = snapshot.val();
+            const card = document.getElementById('active-device-card');
+            const details = document.getElementById('active-device-details');
+            if (data && (data.status === 'running' || data.status === 'pending')) {
+                card.style.display = 'flex';
+                let zones = [];
+                if (data.zone1) zones.push('โซน 1');
+                if (data.zone2) zones.push('โซน 2');
+                let water = Math.round((data.water_duration_sec || 0) / 60);
+                let fert = data.fert_duration_sec || 0;
+
+                details.innerHTML = `
+                    <div style="margin-bottom: 0.3rem;"><b>พื้นที่:</b> ${zones.join(', ') || '-'}</div>
+                    <div style="margin-bottom: 0.3rem;"><b>เวลารดน้ำ:</b> ${water} นาที</div>
+                    <div><b>ปริมาณปุ๋ย:</b> ${fert} ลิตร</div>
+                `;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Fetch Weather (Open-Meteo for Bangkok/Central Thailand as default)
+        async function fetchWeather() {
+            try {
+                // Lat/Lon for Bangkok
+                const lat = 13.75;
+                const lon = 100.51;
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=sunrise,sunset&timezone=Asia%2FBangkok`);
+                const data = await res.json();
+                if (data && data.current_weather) {
+                    const w = data.current_weather;
+                    document.getElementById('weather-temp').innerText = w.temperature + "°";
+
+                    let desc = "แจ่มใส";
+                    let icon = "☀️";
+
+                    // WMO Weather interpretation codes
+                    if (w.weathercode >= 1 && w.weathercode <= 3) { desc = "มีเมฆบางส่วน"; icon = "⛅"; }
+                    else if (w.weathercode >= 45 && w.weathercode <= 48) { desc = "มีหมอก"; icon = "🌫️"; }
+                    else if (w.weathercode >= 51 && w.weathercode <= 69) { desc = "ฝนตกเล็กน้อย"; icon = "🌦️"; }
+                    else if (w.weathercode >= 70 && w.weathercode <= 99) { desc = "พายุฝนฟ้าคะนอง"; icon = "⛈️"; }
+
+                    document.getElementById('weather-desc').innerText = desc;
+                    document.getElementById('weather-icon').innerText = icon;
+
+                    // Sunrise / Sunset
+                    if (data.daily && data.daily.sunrise && data.daily.sunset) {
+                        const sr = data.daily.sunrise[0].split("T")[1];
+                        const ss = data.daily.sunset[0].split("T")[1];
+                        document.getElementById('weather-sun').innerHTML = `🌅 ขึ้น: <b>${sr}</b> น. &nbsp;|&nbsp; 🌇 ตก: <b>${ss}</b> น.`;
+                    }
+                }
+            } catch (e) {
+                document.getElementById('weather-temp').innerText = "--°";
+                document.getElementById('weather-desc').innerText = "ไม่สามารถดึงข้อมูลได้";
+                console.error("Weather fetch failed:", e);
+            }
         }
 
-        window.runSequence = function() {
-            logMsg('Initiating automatic sequence via Cloud...');
-            update(deviceRef, { run_sequence: true })
-                .then(() => {
-                    setTimeout(() => {
-                        // Reset flag after 2 seconds
-                        update(deviceRef, { run_sequence: false });
-                    }, 2000);
-                });
+        fetchWeather();
+
+        // Sidebar Toggle
+        window.toggleSidebar = function () {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('open');
         }
+
+        // Dynamic Thai Greeting based on time of day
+        function updateGreeting() {
+            const hour = new Date().getHours();
+            let title = "สวัสดีเกษตรกร";
+            let subtitle = "ติดตามความคืบหน้าและจัดการฟาร์มของคุณ";
+
+            if (hour >= 5 && hour < 12) {
+                title = "อรุณสวัสดิ์ครับ 🌅";
+                subtitle = "เริ่มต้นวันใหม่กับการจัดการฟาร์มที่ราบรื่นและมีประสิทธิภาพ";
+            } else if (hour >= 12 && hour < 17) {
+                title = "สวัสดีตอนบ่ายครับ ☀️";
+                subtitle = "ช่วงบ่ายนี้อย่าลืมตรวจสอบความชื้นและสภาพอากาศนะครับ";
+            } else if (hour >= 17 && hour < 20) {
+                title = "สวัสดีตอนเย็นครับ 🌇";
+                subtitle = "ตรวจดูภาพรวมการใช้น้ำและปุ๋ยของวันนี้กันครับ";
+            } else {
+                title = "ราตรีสวัสดิ์ครับ 🌙";
+                subtitle = "พักผ่อนให้เต็มที่ ระบบจะช่วยดูแลฟาร์มของคุณเอง";
+            }
+
+            document.getElementById('greeting-title').innerText = title;
+            document.getElementById('greeting-subtitle').innerText = subtitle;
+        }
+        updateGreeting();
     </script>
 </body>
+
 </html>

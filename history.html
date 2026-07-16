@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irrigation IoT - History</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .history-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .filter-select {
+            padding: 0.8rem 1rem;
+            border-radius: 0.5rem;
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            outline: none;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .history-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            background: var(--surface);
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        th {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        .badge {
+            padding: 0.3rem 0.6rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-auto {
+            background: var(--success);
+            color: white;
+        }
+
+        .badge-manual {
+            background: var(--warning);
+            color: black;
+        }
+
+        .btn-delete {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.3rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-delete:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <button class="hamburger-btn" onclick="toggleSidebar()">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="logo">Water system control</div>
+        </div>
+        <div class="nav-links">
+            <!-- Legacy hidden by CSS -->
+        </div>
+    </nav>
+
+    <!-- Sidebar Menu -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo" style="font-size: 1.2rem;">Menu</div>
+            <button class="close-btn" onclick="toggleSidebar()">✕</button>
+        </div>
+        <div class="nav-links-sidebar">
+            <a href="index.html">ภาพรวม (Dashboard)</a>
+            <a href="control.html">ควบคุม (Control)</a>
+            <a href="calculator.html">คำนวณ (Calculator)</a>
+            <a href="schedule.html">ตั้งเวลา (Schedule)</a>
+            <a href="history.html" class="active">ประวัติ (History)</a>
+            <a href="admin.html">ตั้งค่าระบบ (Admin)</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>History Logs</h1>
+        <p class="subtitle">ประวัติการรดน้ำและให้ปุ๋ยย้อนหลัง 1 เดือน</p>
+
+        <div class="history-controls">
+            <select class="filter-select" id="filter-mode" onchange="renderTable()">
+                <option value="all">แสดงทั้งหมด (All)</option>
+                <option value="auto">เฉพาะงานอัตโนมัติ (Auto)</option>
+                <option value="manual">เฉพาะสั่งด้วยมือ (Manual)</option>
+            </select>
+        </div>
+
+        <div class="history-table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>วันที่ / เวลา</th>
+                        <th>โหมด</th>
+                        <th>โซนที่เปิด</th>
+                        <th>เวลาน้ำรวม (นาที)</th>
+                        <th>ปริมาณปุ๋ย (ลิตร)</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="history-body">
+                    <tr>
+                        <td colspan="6" class="loading">กำลังโหลดข้อมูล...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Firebase SDK & Logic -->
+    <script type="module" src="firebase_config.js"></script>
+    <script type="module">
+        import { db, ref, onValue, remove } from './firebase_config.js';
+
+        const historyRef = ref(db, 'history');
+        let allLogs = [];
+
+        onValue(historyRef, (snapshot) => {
+            const data = snapshot.val();
+            allLogs = [];
+            const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+            const now = Date.now();
+
+            if (data) {
+                for (let key in data) {
+                    const log = data[key];
+                    log.key = key;
+
+                    // Auto-delete records older than 30 days
+                    const logTimeMs = log.timestamp * 1000;
+                    if (now - logTimeMs > THIRTY_DAYS_MS) {
+                        remove(ref(db, 'history/' + key));
+                        continue;
+                    }
+                    allLogs.push(log);
+                }
+            }
+            // Sort by timestamp descending (newest first)
+            allLogs.sort((a, b) => b.timestamp - a.timestamp);
+            renderTable();
+        });
+
+        window.renderTable = function () {
+            const filter = document.getElementById('filter-mode').value;
+            const tbody = document.getElementById('history-body');
+            tbody.innerHTML = '';
+
+            let filteredLogs = allLogs;
+            if (filter !== 'all') {
+                filteredLogs = allLogs.filter(log => log.mode === filter);
+            }
+
+            if (filteredLogs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">ไม่มีประวัติการทำงาน</td></tr>';
+                return;
+            }
+
+            filteredLogs.forEach(log => {
+                const dateObj = new Date(log.timestamp * 1000);
+                const dateStr = dateObj.toLocaleString('th-TH');
+
+                const modeBadge = log.mode === 'auto'
+                    ? '<span class="badge badge-auto">Auto</span>'
+                    : '<span class="badge badge-manual">Manual</span>';
+
+                let zones = [];
+                if (log.zone1) zones.push("Z1");
+                if (log.zone2) zones.push("Z2");
+                const zonesStr = zones.length > 0 ? zones.join(", ") : "-";
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${modeBadge}</td>
+                    <td>${zonesStr}</td>
+                    <td>${log.water_duration_min || 0}</td>
+                    <td>${log.fert_amount_l || 0}</td>
+                    <td><button class="btn-delete" onclick="deleteLog('${log.key}')">ลบ</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.deleteLog = async function (key) {
+            if (confirm("คุณต้องการลบประวัตินี้ใช่หรือไม่?")) {
+                await remove(ref(db, 'history/' + key));
+            }
+        }
+
+        // Sidebar Toggle
+        window.toggleSidebar = function () {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('open');
+        }
+    </script>
+</body>
+
+</html>

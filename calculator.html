@@ -1,54 +1,196 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Irrigation IoT - Calculator</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Custom Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 1.2rem;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            transition: 0.3s;
+        }
+
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+
+        .modal h3 {
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .modal p {
+            color: var(--text);
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+            font-size: 1.05rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        .btn-modal {
+            padding: 0.8rem 1.5rem;
+            border-radius: 0.6rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: 0.2s;
+            flex: 1;
+        }
+
+        .btn-success {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-cancel {
+            background: #475569;
+            color: white;
+        }
+
+        .btn-modal:hover {
+            opacity: 0.8;
+            transform: scale(1.02);
+        }
+    </style>
 </head>
+
 <body>
     <nav class="navbar">
-        <div class="logo">Fertilizer IoT (Cloud)</div>
+        <div class="nav-left">
+            <button class="hamburger-btn" onclick="toggleSidebar()">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="logo">Water system control</div>
+        </div>
         <div class="nav-links">
-            <a href="index.html">Dashboard</a>
-            <a href="calculator.html" class="active">Calculator</a>
-            <a href="admin.html">Admin</a>
+            <!-- Legacy hidden by CSS -->
         </div>
     </nav>
+
+    <!-- Sidebar Menu -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo" style="font-size: 1.2rem;">Menu</div>
+            <button class="close-btn" onclick="toggleSidebar()">✕</button>
+        </div>
+        <div class="nav-links-sidebar">
+            <a href="index.html">ภาพรวม (Dashboard)</a>
+            <a href="control.html">ควบคุม (Control)</a>
+            <a href="calculator.html" class="active">คำนวณ (Calculator)</a>
+            <a href="schedule.html">ตั้งเวลา (Schedule)</a>
+            <a href="history.html">ประวัติ (History)</a>
+            <a href="admin.html">ตั้งค่าระบบ (Admin)</a>
+        </div>
+    </div>
 
     <div class="container">
         <h1>Durian Needs Calculator</h1>
         <p class="subtitle">คำนวณปริมาณน้ำและปุ๋ยสำหรับต้นทุเรียนของคุณ (อ้างอิงจากฐานข้อมูล Admin)</p>
 
-        <div class="form-card">
-            <div class="form-group">
-                <label>อายุต้นทุเรียน (ปี)</label>
-                <input type="number" id="age" min="1" max="50" placeholder="เช่น 5">
+        <div class="form-card" style="padding: 2rem; border-radius: 1.2rem;">
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+                <div class="form-group" style="margin: 0;">
+                    <label
+                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">อายุต้นทุเรียน
+                        (ปี)</label>
+                    <input type="number" id="age" min="1" max="50" placeholder="ตัวอย่าง: 5"
+                        style="height: 50px; border-radius: 0.6rem;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label
+                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">ความกว้างทรงพุ่ม
+                        (เมตร)</label>
+                    <input type="number" id="canopy" min="0.5" max="15" step="0.1" placeholder="ตัวอย่าง: 4.5"
+                        style="height: 50px; border-radius: 0.6rem;">
+                </div>
             </div>
-            <div class="form-group">
-                <label>ความกว้างทรงพุ่ม (เมตร)</label>
-                <input type="number" id="canopy" min="0.5" max="15" step="0.1" placeholder="เช่น 4.5">
-            </div>
-            <div class="form-group">
-                <label>ระยะการเจริญเติบโต</label>
-                <select id="stage">
-                    <option value="vegetative">ระยะแตกใบอ่อน (Vegetative)</option>
-                    <option value="flowering">ระยะออกดอก (Flowering)</option>
-                    <option value="fruiting">ระยะติดผล (Fruiting)</option>
-                    <option value="post_harvest">ระยะหลังเก็บเกี่ยว (Post Harvest)</option>
-                </select>
-            </div>
-            <button class="btn-submit" onclick="calculateNeeds()">คำนวณ</button>
-        </div>
 
-        <div class="result-box" id="result-box">
-            <h3>ผลการประเมินที่ต้องการ</h3>
-            <div class="value" id="water-result">ปริมาณน้ำ: -- ลิตร/วัน</div>
-            <div class="value" id="fert-result">ปริมาณปุ๋ย: -- กรัม/ต้น</div>
-            <p id="calc-log" style="color:var(--text-muted); margin-top:1rem; font-size:0.9rem;"></p>
-            <br>
-            <button class="btn-submit" style="max-width:300px; background:var(--success);" onclick="autoApply()">ใช้ค่านี้สั่งงานระบบอัตโนมัติ (Coming Soon)</button>
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+                <div class="form-group" style="margin: 0;">
+                    <label
+                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">ระยะการเจริญเติบโต</label>
+                    <select id="stage" style="height: 50px; border-radius: 0.6rem;">
+                        <option value="vegetative">ระยะแตกใบอ่อน (Vegetative)</option>
+                        <option value="flowering">ระยะออกดอก (Flowering)</option>
+                        <option value="fruiting">ระยะติดผล (Fruiting)</option>
+                        <option value="post_harvest">ระยะหลังเก็บเกี่ยว (Post Harvest)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label
+                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">จำนวนต้นทุเรียนในโซน</label>
+                    <input type="number" id="trees" min="1" max="1000" value="50"
+                        style="height: 50px; border-radius: 0.6rem;">
+                </div>
+            </div>
+
+            <button class="btn-submit" onclick="calculateNeeds()"
+                style="padding: 1rem; font-size: 1.1rem; border-radius: 0.6rem; width: 100%;">คำนวณปริมาณน้ำและปุ๋ย</button>
+        </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div class="modal-overlay" id="calc-modal">
+        <div class="modal">
+            <h3>✅ ผลการประเมินที่แนะนำ</h3>
+            <div
+                style="background: rgba(16, 185, 129, 0.1); padding: 1.5rem; border-radius: 0.8rem; margin: 1rem 0; text-align: left;">
+                <div id="water-result" style="color: var(--primary); margin-bottom: 1rem;">ปริมาณน้ำ: -- ลิตร/วัน</div>
+                <div id="fert-result" style="color: var(--primary);">ปริมาณปุ๋ย: -- กรัม/ต้น</div>
+            </div>
+            <p id="calc-log" style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1rem;"></p>
+            <div class="modal-actions">
+                <button class="btn-modal btn-cancel" onclick="closeModal()">แก้ไข (Edit)</button>
+                <button class="btn-modal btn-success" onclick="autoApply()">OK (นำไปตั้งเวลา)</button>
+            </div>
         </div>
     </div>
 
@@ -57,12 +199,13 @@
     <script type="module">
         import { db, ref, get } from './firebase_config.js';
 
-        window.calculateNeeds = async function() {
+        window.calculateNeeds = async function () {
             const age = parseFloat(document.getElementById('age').value);
             const canopy = parseFloat(document.getElementById('canopy').value);
             const stage = document.getElementById('stage').value;
+            const trees = parseInt(document.getElementById('trees').value) || 50;
 
-            if(!age || !canopy) {
+            if (!age || !canopy || !trees) {
                 alert("กรุณากรอกข้อมูลให้ครบถ้วน");
                 return;
             }
@@ -71,28 +214,38 @@
                 // Fetch Rules from Firebase
                 const rulesRef = ref(db, 'admin_rules');
                 const snapshot = await get(rulesRef);
-                
+
                 if (snapshot.exists()) {
                     const rules = snapshot.val();
-                    
+
                     // Logic Example: 
                     // Base Water = canopy * rules.base_water_per_sqm
                     // Base Fert = age * rules.base_fert_per_year
                     // Stage Multiplier applied to both
 
-                    const baseWater = (canopy * canopy) * (rules.base_water_per_sqm || 5); 
+                    const baseWater = (canopy * canopy) * (rules.base_water_per_sqm || 5);
                     const baseFert = age * (rules.base_fert_per_year || 200);
-                    
+
                     const stageMultiplier = rules.stage_multipliers ? (rules.stage_multipliers[stage] || 1) : 1;
+                    const pumpFlow = rules.pump_flow_rate || 10;
 
-                    const finalWater = Math.round(baseWater * stageMultiplier);
-                    const finalFert = Math.round(baseFert * stageMultiplier);
+                    const waterPerTree = Math.round(baseWater * stageMultiplier);
+                    const fertPerTree = Math.round(baseFert * stageMultiplier);
 
-                    document.getElementById('water-result').innerText = `ปริมาณน้ำ: ${finalWater} ลิตร/วัน`;
-                    document.getElementById('fert-result').innerText = `ปริมาณปุ๋ย: ${finalFert} กรัม/ต้น`;
-                    
-                    document.getElementById('result-box').classList.add('visible');
-                    document.getElementById('calc-log').innerText = `อ้างอิงกฎจาก Admin (Multiplier: ${stageMultiplier})`;
+                    const totalWaterLiters = waterPerTree * trees;
+                    const totalFertGrams = fertPerTree * trees;
+
+                    const waterMins = Math.ceil(totalWaterLiters / pumpFlow);
+                    const fertLiters = (totalFertGrams / 1000).toFixed(2);
+
+                    document.getElementById('water-result').innerHTML = `<b>ปริมาณน้ำรวม:</b> ${totalWaterLiters} ลิตร <br><span style="font-size:0.95rem; color:var(--text); opacity:0.8;">(${waterPerTree} ลิตร/ต้น)</span><br><span style="font-size:1rem; font-weight:600; color:var(--text);">⏱️ เวลาปั๊ม: ${waterMins} นาที</span>`;
+                    document.getElementById('fert-result').innerHTML = `<b>ปริมาณปุ๋ยรวม:</b> ${totalFertGrams} กรัม <br><span style="font-size:0.95rem; color:var(--text); opacity:0.8;">(${fertPerTree} กรัม/ต้น)</span><br><span style="font-size:1rem; font-weight:600; color:var(--text);">💧 จ่ายปุ๋ย: ${fertLiters} ลิตร</span>`;
+
+                    document.getElementById('calc-log').innerText = `อ้างอิงจาก Admin (Multiplier: ${stageMultiplier}, อัตราปั๊ม: ${pumpFlow} ลิตร/นาที)`;
+
+                    // Show modal and store values
+                    document.getElementById('calc-modal').classList.add('show');
+                    window.currentCalcResult = { waterMins, fertLiters };
                 } else {
                     alert("ยังไม่มีการตั้งค่าจาก Admin ในระบบ Database");
                 }
@@ -102,9 +255,24 @@
             }
         }
 
-        window.autoApply = function() {
-            alert("ระบบ Auto กำลังพัฒนา (จะส่งข้อมูลนี้ไปคำนวณระยะเวลาเปิดวาล์วให้ ESP32)");
+        window.autoApply = function () {
+            if (window.currentCalcResult) {
+                const w = window.currentCalcResult.waterMins;
+                const f = window.currentCalcResult.fertLiters;
+                window.location.href = `schedule.html?water_mins=${w}&fert_liters=${f}`;
+            }
+        }
+
+        window.closeModal = function () {
+            document.getElementById('calc-modal').classList.remove('show');
+        }
+
+        // Sidebar Toggle
+        window.toggleSidebar = function () {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('open');
         }
     </script>
 </body>
+
 </html>

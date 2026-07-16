@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irrigation IoT - Control Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .badge-running {
+            background: var(--danger);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: none;
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            text-align: center;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal h3 {
+            margin-bottom: 1rem;
+        }
+
+        .modal p {
+            color: var(--text);
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+            font-size: 1.05rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .btn-modal {
+            padding: 0.8rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: #000;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-cancel {
+            background: #475569;
+            color: white;
+        }
+
+        .btn-modal:hover {
+            opacity: 0.8;
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <button class="hamburger-btn" onclick="toggleSidebar()">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="logo">Water system control</div>
+        </div>
+        <div class="nav-links">
+            <!-- Legacy hidden by CSS -->
+        </div>
+    </nav>
+
+    <!-- Sidebar Menu -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo" style="font-size: 1.2rem;">Menu</div>
+            <button class="close-btn" onclick="toggleSidebar()">✕</button>
+        </div>
+        <div class="nav-links-sidebar">
+            <a href="index.html">ภาพรวม (Dashboard)</a>
+            <a href="control.html" class="active">ควบคุม (Control)</a>
+            <a href="calculator.html">คำนวณ (Calculator)</a>
+            <a href="schedule.html">ตั้งเวลา (Schedule)</a>
+            <a href="history.html">ประวัติ (History)</a>
+            <a href="admin.html">ตั้งค่าระบบ (Admin)</a>
+        </div>
+    </div>
+
+    <div class="container" style="padding-top: 1rem;">
+        <div class="header-row">
+            <div class="title-area">
+                <h1>Device Control</h1>
+                <p class="subtitle">ควบคุมระบบรดน้ำและแสดงผลแบบ Real-time</p>
+            </div>
+            <div class="system-status">
+                <div class="status-item">
+                    <span class="led" id="sys-firebase" style="background:#ef4444;"></span>
+                    <span>Firebase: </span><span id="text-firebase" style="color: #ef4444;">Connecting...</span>
+                </div>
+                <div class="status-item">
+                    <span class="led" id="sys-esp32" style="background:#ef4444;"></span>
+                    <span>ESP32: </span><span id="text-esp32" style="color: #ef4444;">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span>📶 WiFi: </span><span id="text-wifi"
+                        style="color: var(--primary); font-weight: 600;">--</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="badge-auto" class="badge-running">⚠️ ระบบอัตโนมัติกำลังทำงานอยู่ ⚠️</div>
+        <div id="badge-error" class="badge-running" style="background: var(--warning); color: black;">⚠️ ขาดการเชื่อมต่อ
+            Firebase ⚠️</div>
+
+        <div class="dash-layout">
+            <!-- Zone 1 Panel -->
+            <div class="zone-panel z1">
+                <div class="panel-left">
+                    <h2>Zone 1</h2>
+                    <div class="status-row">
+                        <div class="led" id="z1-led-pump"></div><span>Pump</span>
+                    </div>
+                    <div class="status-row">
+                        <div class="led" id="z1-led-valve"></div><span>Valve</span>
+                    </div>
+                    <div class="status-row">
+                        <div class="led" id="z1-led-fert"></div><span>Ferti</span>
+                    </div>
+                </div>
+                <div class="panel-center">
+                    <div class="lcd-title" id="z1-lcd-title">Standby</div>
+                    <div class="lcd-time" id="z1-lcd-time">00:00</div>
+                    <div class="lcd-status" id="z1-lcd-status">Ready</div>
+                </div>
+                <div class="panel-right">
+                    <div class="toggle-group" onclick="handleToggle('pump')">
+                        <div class="toggle-label">Pump</div>
+                        <div class="toggle-track" id="z1-btn-pump">
+                            <span class="toggle-text on">ON</span><span class="toggle-text off">OFF</span>
+                            <div class="toggle-thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                                    <line x1="12" y1="2" x2="12" y2="12"></line>
+                                </svg></div>
+                        </div>
+                    </div>
+                    <div class="toggle-group" onclick="handleToggle('zone1')">
+                        <div class="toggle-label">Valve</div>
+                        <div class="toggle-track" id="z1-btn-valve">
+                            <span class="toggle-text on">ON</span><span class="toggle-text off">OFF</span>
+                            <div class="toggle-thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                                    <line x1="12" y1="2" x2="12" y2="12"></line>
+                                </svg></div>
+                        </div>
+                    </div>
+                    <div class="toggle-group" onclick="handleToggle('fert')">
+                        <div class="toggle-label">Ferti</div>
+                        <div class="toggle-track" id="z1-btn-fert">
+                            <span class="toggle-text on">ON</span><span class="toggle-text off">OFF</span>
+                            <div class="toggle-thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                                    <line x1="12" y1="2" x2="12" y2="12"></line>
+                                </svg></div>
+                        </div>
+                    </div>
+                    <button class="btn-outline" onclick="window.location.href='schedule.html'">Settings</button>
+                </div>
+            </div>
+
+            <!-- Zone 2 Panel -->
+            <div class="zone-panel z2">
+                <div class="panel-left">
+                    <h2>Zone 2</h2>
+                    <div class="status-row">
+                        <div class="led" id="z2-led-pump"></div><span>Pump</span>
+                    </div>
+                    <div class="status-row">
+                        <div class="led" id="z2-led-valve"></div><span>Valve</span>
+                    </div>
+                    <div class="status-row">
+                        <div class="led" id="z2-led-fert"></div><span>Ferti</span>
+                    </div>
+                </div>
+                <div class="panel-center">
+                    <div class="lcd-title" id="z2-lcd-title">Standby</div>
+                    <div class="lcd-time" id="z2-lcd-time">00:00</div>
+                    <div class="lcd-status" id="z2-lcd-status">Ready</div>
+                </div>
+                <div class="panel-right">
+                    <div class="toggle-group" onclick="handleToggle('pump')">
+                        <div class="toggle-label">Pump</div>
+                        <div class="toggle-track" id="z2-btn-pump">
+                            <span class="toggle-text on">ON</span><span class="toggle-text off">OFF</span>
+                            <div class="toggle-thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                                    <line x1="12" y1="2" x2="12" y2="12"></line>
+                                </svg></div>
+                        </div>
+                    </div>
+                    <div class="toggle-group" onclick="handleToggle('zone2')">
+                        <div class="toggle-label">Valve</div>
+                        <div class="toggle-track" id="z2-btn-valve">
+                            <span class="toggle-text on">ON</span><span class="toggle-text off">OFF</span>
+                            <div class="toggle-thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                                    <line x1="12" y1="2" x2="12" y2="12"></line>
+                                </svg></div>
+                        </div>
+                    </div>
+                    <div class="toggle-group" onclick="handleToggle('fert')">
+                        <div class="toggle-label">Ferti</div>
+                        <div class="toggle-track" id="z2-btn-fert">
+                            <span class="toggle-text on">ON</span><span class="toggle-text off">OFF</span>
+                            <div class="toggle-thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                                    <line x1="12" y1="2" x2="12" y2="12"></line>
+                                </svg></div>
+                        </div>
+                    </div>
+                    <button class="btn-outline" onclick="window.location.href='schedule.html'">Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div class="modal-overlay" id="custom-modal">
+        <div class="modal">
+            <h3 id="modal-title" style="color: var(--warning);">⚠️ คำเตือน</h3>
+            <p id="modal-desc"></p>
+            <div class="modal-actions" id="modal-buttons">
+                <!-- Buttons injected dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK & Logic -->
+    <script type="module" src="firebase_config.js"></script>
+    <script type="module">
+        import { db, ref, onValue, set, update, remove } from './firebase_config.js';
+
+        const deviceRef = ref(db, 'device_control');
+        const jobRef = ref(db, 'current_job');
+        const connectedRef = ref(db, ".info/connected");
+        const statusRef = ref(db, 'device_status');
+
+        let currentStates = { pump: false, zone1: false, zone2: false, fert: false };
+        let isAutoRunning = false;
+        let currentJobData = null;
+        let startTimeData = { pump: 0, zone1: 0, zone2: 0, fert: 0 };
+        let esp32LastSeenLocalTime = 0;
+
+        function logMsg(msg) {
+            console.log(msg); // Removed the old log text element
+        }
+
+        function formatTime(sec) {
+            if (isNaN(sec) || sec < 0) return "00:00";
+            const m = Math.floor(sec / 60).toString().padStart(2, '0');
+            const s = (sec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        // Connection Check
+        onValue(connectedRef, (snap) => {
+            const fbLed = document.getElementById('sys-firebase');
+            const fbText = document.getElementById('text-firebase');
+            if (snap.val() === false) {
+                document.getElementById('badge-error').style.display = 'block';
+                fbLed.className = 'led';
+                fbLed.style.background = '#ef4444';
+                fbLed.style.boxShadow = 'none';
+                fbText.innerText = 'Disconnected';
+                fbText.style.color = '#ef4444';
+                logMsg("⚠️ Disconnected from Firebase!");
+            } else {
+                document.getElementById('badge-error').style.display = 'none';
+                fbLed.className = 'led on';
+                fbLed.style.background = '';
+                fbLed.style.boxShadow = '';
+                fbText.innerText = 'Connected';
+                fbText.style.color = '#10b981';
+            }
+        });
+
+        // Listen for ESP32 device_status
+        onValue(statusRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                esp32LastSeenLocalTime = Math.floor(Date.now() / 1000);
+                document.getElementById('text-wifi').innerText = data.wifi_ssid || '--';
+            }
+        });
+
+        // Listen for current_job status
+        onValue(jobRef, (snapshot) => {
+            currentJobData = snapshot.val();
+            if (currentJobData && currentJobData.status !== 'aborted') {
+                isAutoRunning = true;
+                document.getElementById('badge-auto').style.display = 'block';
+            } else {
+                isAutoRunning = false;
+                document.getElementById('badge-auto').style.display = 'none';
+            }
+            updateLCDs();
+        });
+
+        // Listen for real-time device changes
+        onValue(deviceRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                // Track start times for manual mode
+                ['pump', 'zone1', 'zone2', 'fert'].forEach(dev => {
+                    if (data[dev] && !currentStates[dev]) {
+                        startTimeData[dev] = Date.now();
+                    } else if (!data[dev] && currentStates[dev]) {
+                        startTimeData[dev] = 0;
+                    }
+                });
+
+                currentStates = data;
+                updateLEDs();
+                updateLCDs();
+                logMsg("Firebase Connected & Synced");
+            }
+        });
+
+        function updateLEDs() {
+            // Zone 1
+            document.getElementById('z1-led-pump').className = 'led ' + (currentStates.pump ? 'on' : '');
+            document.getElementById('z1-led-valve').className = 'led ' + (currentStates.zone1 ? 'on' : '');
+            document.getElementById('z1-led-fert').className = 'led ' + (currentStates.fert ? 'on' : '');
+            document.getElementById('z1-btn-pump').className = 'toggle-track ' + (currentStates.pump ? 'active' : '');
+            document.getElementById('z1-btn-valve').className = 'toggle-track ' + (currentStates.zone1 ? 'active' : '');
+            document.getElementById('z1-btn-fert').className = 'toggle-track ' + (currentStates.fert ? 'active' : '');
+
+            // Zone 2
+            document.getElementById('z2-led-pump').className = 'led ' + (currentStates.pump ? 'on' : '');
+            document.getElementById('z2-led-valve').className = 'led ' + (currentStates.zone2 ? 'on' : '');
+            document.getElementById('z2-led-fert').className = 'led ' + (currentStates.fert ? 'on' : '');
+            document.getElementById('z2-btn-pump').className = 'toggle-track ' + (currentStates.pump ? 'active' : '');
+            document.getElementById('z2-btn-valve').className = 'toggle-track ' + (currentStates.zone2 ? 'active' : '');
+            document.getElementById('z2-btn-fert').className = 'toggle-track ' + (currentStates.fert ? 'active' : '');
+        }
+
+        function updateLCDs() {
+            [1, 2].forEach(z => {
+                const zoneKey = 'zone' + z;
+                const titleEl = document.getElementById(`z${z}-lcd-title`);
+                const timeEl = document.getElementById(`z${z}-lcd-time`);
+                const statEl = document.getElementById(`z${z}-lcd-status`);
+
+                if (isAutoRunning && currentJobData && currentJobData[zoneKey]) {
+                    titleEl.innerText = "Auto Mode";
+                    statEl.innerText = currentStates.fert ? "Fertilizing + Watering" : (currentStates.pump ? "Flushing / Watering" : "Waiting Pump");
+                    titleEl.style.color = '#10b981';
+
+                    const fbStartTime = currentJobData.start_time || currentJobData.timestamp;
+                    const elapsed = Math.floor((Date.now() / 1000) - fbStartTime);
+                    timeEl.innerText = formatTime(Math.max(0, elapsed));
+                } else if (currentStates[zoneKey]) {
+                    titleEl.innerText = "Manual Mode";
+                    titleEl.style.color = '#f59e0b';
+                    statEl.innerText = currentStates.pump ? "Watering..." : "Valve Open (No Pump)";
+
+                    const fbStartTime = currentStates[zoneKey + '_start_time'];
+                    let elapsed = 0;
+                    if (fbStartTime) {
+                        elapsed = Math.floor((Date.now() / 1000) - fbStartTime);
+                    } else if (startTimeData[zoneKey] > 0) {
+                        elapsed = Math.floor((Date.now() - startTimeData[zoneKey]) / 1000);
+                    }
+                    timeEl.innerText = formatTime(Math.max(0, elapsed));
+                } else {
+                    titleEl.innerText = "Standby";
+                    titleEl.style.color = '#3b82f6';
+                    timeEl.innerText = "00:00";
+                    statEl.innerText = "Ready";
+                }
+            });
+        }
+
+        // Timer for LCD and Status updates every 1 second
+        setInterval(() => {
+            updateLCDs();
+
+            // Check ESP32 Status
+            const now = Math.floor(Date.now() / 1000);
+            const espLed = document.getElementById('sys-esp32');
+            const espText = document.getElementById('text-esp32');
+
+            // If we received an update within the last 45 seconds, it is Online
+            if (esp32LastSeenLocalTime > 0 && (now - esp32LastSeenLocalTime) < 45) {
+                espLed.className = 'led on';
+                espLed.style.background = '';
+                espLed.style.boxShadow = '';
+                espText.innerText = 'Online';
+                espText.style.color = '#10b981';
+            } else {
+                espLed.className = 'led';
+                espLed.style.background = '#ef4444';
+                espLed.style.boxShadow = 'none';
+                espText.innerText = 'Offline';
+                espText.style.color = '#ef4444';
+            }
+        }, 1000);
+
+        // Modal Logic
+        const modalOverlay = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalDesc = document.getElementById('modal-desc');
+        const modalButtons = document.getElementById('modal-buttons');
+
+        function showModal(title, desc, buttonsHTML) {
+            modalTitle.innerHTML = title;
+            modalDesc.innerHTML = desc;
+            modalButtons.innerHTML = buttonsHTML;
+            modalOverlay.style.display = 'flex';
+        }
+
+        window.closeModal = function () {
+            modalOverlay.style.display = 'none';
+        }
+
+        window.executeAction = async function (deviceId, turnPumpOffToo, abortAutoJob, openZ1Too = false) {
+            closeModal();
+            const updates = {};
+            const nowSec = Math.floor(Date.now() / 1000);
+
+            if (abortAutoJob) {
+                await remove(jobRef);
+                updates['abort_job'] = true;
+            }
+
+            const newState = !currentStates[deviceId];
+            updates[deviceId] = newState;
+
+            if (newState) {
+                updates[deviceId + '_start_time'] = nowSec;
+            } else {
+                updates[deviceId + '_start_time'] = null; // Clear old time
+            }
+
+            if (turnPumpOffToo) {
+                updates['pump'] = false;
+                updates['pump_start_time'] = null; // Clear old time
+            }
+            if (openZ1Too) {
+                updates['zone1'] = true;
+                updates['zone1_start_time'] = nowSec;
+            }
+
+            update(deviceRef, updates).catch(err => logMsg("Error: " + err));
+        }
+
+        // Main Toggle Logic
+        window.handleToggle = function (id) {
+            const isTurningOff = currentStates[id] === true;
+
+            // --- SAFETY 1: Closing valve while pump is ON ---
+            if (id === 'zone1' || id === 'zone2') {
+                if (isTurningOff && currentStates.pump) {
+                    const otherZone = (id === 'zone1') ? 'zone2' : 'zone1';
+                    if (currentStates[otherZone] === false) {
+                        const title = "🚨 อันตราย: ปั๊มน้ำทำงานอยู่";
+                        const desc = "การปิดวาล์วตัวสุดท้ายขณะที่ปั๊มน้ำเปิดอยู่ จะทำให้ท่อแตกได้!<br><br>แนะนำให้ปิดปั๊มด้วย";
+                        const btns = `
+                            <button class="btn-modal btn-warning" onclick="executeAction('${id}', false, ${isAutoRunning})">เสี่ยง: ปิดแค่วาล์ว</button>
+                            <button class="btn-modal btn-danger" onclick="executeAction('${id}', true, ${isAutoRunning})">ปลอดภัย: ปิดวาล์วและปิดปั๊มด้วย</button>
+                            <button class="btn-modal btn-cancel" onclick="closeModal()">ยกเลิก</button>
+                        `;
+                        showModal(title, desc, btns);
+                        return;
+                    }
+                }
+            }
+
+            // --- SAFETY 2: Turning ON pump while all valves closed ---
+            if (id === 'pump' && !isTurningOff) {
+                if (!currentStates.zone1 && !currentStates.zone2) {
+                    const title = "⚠️ อันตราย: ยังไม่เปิดวาล์วน้ำ";
+                    const desc = "คุณกำลังสั่งเปิดปั๊มในขณะที่วาล์วทุกโซนปิดอยู่!<br>ต้องการเปิดวาล์ว Zone 1 พร้อมกับปั๊มเลยหรือไม่?";
+                    const btns = `
+                        <button class="btn-modal btn-success" onclick="executeAction('${id}', false, ${isAutoRunning}, true)">ใช่ เปิดวาล์ว Zone 1 ให้ด้วย</button>
+                        <button class="btn-modal btn-warning" onclick="executeAction('${id}', false, ${isAutoRunning})">เปิดปั๊มอย่างเดียว (เสี่ยงท่อแตก)</button>
+                        <button class="btn-modal btn-cancel" onclick="closeModal()">ยกเลิก</button>
+                    `;
+                    showModal(title, desc, btns);
+                    return;
+                }
+            }
+
+            // --- SAFETY 3: Auto Job is Running ---
+            if (isAutoRunning) {
+                const title = "⚠️ ระบบอัตโนมัติทำงานอยู่";
+                const desc = "การสั่งงานด้วยมือ จะยกเลิกระบบอัตโนมัติ!<br>คุณแน่ใจหรือไม่?";
+                const btns = `
+                    <button class="btn-modal btn-danger" onclick="executeAction('${id}', false, true)">ตกลง (ยกเลิกระบบอัตโนมัติ)</button>
+                    <button class="btn-modal btn-cancel" onclick="closeModal()">ยกเลิก</button>
+                `;
+                showModal(title, desc, btns);
+                return;
+            }
+
+            // --- Normal Toggle ---
+            executeAction(id, false, false);
+        }
+
+        // Sidebar Toggle
+        window.toggleSidebar = function () {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('open');
+        }
+    </script>
+</body>
+
+</html>

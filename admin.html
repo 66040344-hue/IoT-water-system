@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,51 +8,111 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <nav class="navbar">
-        <div class="logo">Fertilizer IoT (Cloud)</div>
+        <div class="nav-left">
+            <button class="hamburger-btn" onclick="toggleSidebar()">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="logo">Water system control</div>
+        </div>
         <div class="nav-links">
-            <a href="index.html">Dashboard</a>
-            <a href="calculator.html">Calculator</a>
-            <a href="admin.html" class="active">Admin</a>
+            <!-- Legacy hidden by CSS -->
         </div>
     </nav>
+
+    <!-- Sidebar Menu -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo" style="font-size: 1.2rem;">Menu</div>
+            <button class="close-btn" onclick="toggleSidebar()">✕</button>
+        </div>
+        <div class="nav-links-sidebar">
+            <a href="index.html">ภาพรวม (Dashboard)</a>
+            <a href="control.html">ควบคุม (Control)</a>
+            <a href="calculator.html">คำนวณ (Calculator)</a>
+            <a href="schedule.html">ตั้งเวลา (Schedule)</a>
+            <a href="history.html">ประวัติ (History)</a>
+            <a href="admin.html" class="active">ตั้งค่าระบบ (Admin)</a>
+        </div>
+    </div>
 
     <div class="container">
         <h1>Admin Control Panel</h1>
         <p class="subtitle">ตั้งค่าตัวแปรและกฎการคำนวณ (ข้อมูลจะถูกบันทึกลง Firebase)</p>
 
-        <div class="form-card">
-            <h2 style="margin-bottom:1rem; color:var(--primary);">ค่าพื้นฐาน (Base Values)</h2>
-            <div class="form-group">
-                <label>ค่าน้ำพื้นฐานต่อตารางเมตรทรงพุ่ม (ลิตร)</label>
-                <input type="number" id="base_water" step="0.1" value="5">
-            </div>
-            <div class="form-group">
-                <label>ค่าปุ๋ยพื้นฐานต่ออายุ 1 ปี (กรัม)</label>
-                <input type="number" id="base_fert" step="10" value="200">
+        <div class="form-card" style="padding: 2rem; border-radius: 1.2rem;">
+            <h2 style="margin-bottom:1.5rem; color:var(--primary); font-size: 1.3rem;">🌱 ค่าพื้นฐาน (Base Values)</h2>
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                <div class="form-group" style="margin: 0;">
+                    <label
+                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">น้ำ/ตร.ม.
+                        ทรงพุ่ม (ลิตร)</label>
+                    <input type="number" id="base_water" step="0.1" value="5"
+                        style="height: 50px; border-radius: 0.6rem;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label
+                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">ปุ๋ย/อายุ 1
+                        ปี (กรัม)</label>
+                    <input type="number" id="base_fert" step="10" value="200"
+                        style="height: 50px; border-radius: 0.6rem;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label
+                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">อัตราปั๊มน้ำ
+                        (ลิตร/นาที)</label>
+                    <input type="number" id="pump_flow" step="1" value="10"
+                        style="height: 50px; border-radius: 0.6rem;">
+                </div>
             </div>
 
-            <h2 style="margin-bottom:1rem; margin-top:2rem; color:var(--primary);">ตัวคูณตามระยะการเจริญเติบโต (Stage Multipliers)</h2>
-            <div class="form-group">
-                <label>ระยะแตกใบอ่อน (Vegetative)</label>
-                <input type="number" id="stage_vegetative" step="0.1" value="1.2">
+            <h2 style="margin-bottom:1.5rem; color:var(--primary); font-size: 1.3rem;">📊 ตัวคูณตามระยะการเจริญเติบโต
+                (Stage Multipliers)</h2>
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+                <div class="form-group" style="margin: 0;">
+                    <label
+                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">แตกใบอ่อน
+                        (Vegetative)</label>
+                    <input type="number" id="stage_vegetative" step="0.1" value="1.2"
+                        style="height: 50px; border-radius: 0.6rem;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">ออกดอก
+                        (Flowering)</label>
+                    <input type="number" id="stage_flowering" step="0.1" value="1.0"
+                        style="height: 50px; border-radius: 0.6rem;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">ติดผล
+                        (Fruiting)</label>
+                    <input type="number" id="stage_fruiting" step="0.1" value="1.5"
+                        style="height: 50px; border-radius: 0.6rem;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label
+                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">หลังเก็บเกี่ยว
+                        (Post Harvest)</label>
+                    <input type="number" id="stage_post_harvest" step="0.1" value="0.8"
+                        style="height: 50px; border-radius: 0.6rem;">
+                </div>
             </div>
-            <div class="form-group">
-                <label>ระยะออกดอก (Flowering)</label>
-                <input type="number" id="stage_flowering" step="0.1" value="1.0">
-            </div>
-            <div class="form-group">
-                <label>ระยะติดผล (Fruiting)</label>
-                <input type="number" id="stage_fruiting" step="0.1" value="1.5">
-            </div>
-            <div class="form-group">
-                <label>ระยะหลังเก็บเกี่ยว (Post Harvest)</label>
-                <input type="number" id="stage_post_harvest" step="0.1" value="0.8">
-            </div>
-            
-            <button class="btn-submit" onclick="saveRules()">💾 บันทึกกฎลง Database</button>
-            <p id="admin-log" style="color:var(--success); margin-top:1rem; text-align:center;"></p>
+
+            <button class="btn-submit" onclick="saveRules()"
+                style="padding: 1rem; font-size: 1.1rem; border-radius: 0.6rem; margin-top: 1rem; width: 100%;">💾
+                บันทึกกฎลง Database</button>
+            <p id="admin-log"
+                style="color:var(--success); margin-top:0.5rem; text-align:center; font-weight: 500; min-height: 20px; font-size: 0.9rem;">
+            </p>
         </div>
     </div>
 
@@ -70,8 +131,9 @@
                     const rules = snapshot.val();
                     document.getElementById('base_water').value = rules.base_water_per_sqm || 5;
                     document.getElementById('base_fert').value = rules.base_fert_per_year || 200;
-                    
-                    if(rules.stage_multipliers) {
+                    document.getElementById('pump_flow').value = rules.pump_flow_rate || 10;
+
+                    if (rules.stage_multipliers) {
                         document.getElementById('stage_vegetative').value = rules.stage_multipliers.vegetative || 1.2;
                         document.getElementById('stage_flowering').value = rules.stage_multipliers.flowering || 1.0;
                         document.getElementById('stage_fruiting').value = rules.stage_multipliers.fruiting || 1.5;
@@ -84,13 +146,14 @@
         }
         loadRules();
 
-        window.saveRules = function() {
+        window.saveRules = function () {
             const btn = document.querySelector('.btn-submit');
             btn.innerText = "Saving...";
 
             const rulesData = {
                 base_water_per_sqm: parseFloat(document.getElementById('base_water').value),
                 base_fert_per_year: parseFloat(document.getElementById('base_fert').value),
+                pump_flow_rate: parseFloat(document.getElementById('pump_flow').value),
                 stage_multipliers: {
                     vegetative: parseFloat(document.getElementById('stage_vegetative').value),
                     flowering: parseFloat(document.getElementById('stage_flowering').value),
@@ -112,6 +175,13 @@
                     btn.innerText = "💾 บันทึกกฎลง Database";
                 });
         }
+
+        // Sidebar Toggle
+        window.toggleSidebar = function () {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('open');
+        }
     </script>
 </body>
+
 </html>
