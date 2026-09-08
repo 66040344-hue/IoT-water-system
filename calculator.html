@@ -1,278 +1,1597 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Irrigation IoT - Calculator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>คำนวณและประเมินปุ๋ยน้ำทุเรียนอัจฉริยะ (Smart Fertigation Calculator)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* Custom Modal Overlay */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            display: none;
+        :root {
+            --primary: #15803d;
+            --primary-dark: #166534;
+            --primary-light: #f0fdf4;
+            --primary-border: #bbf7d0;
+            --primary-ring: rgba(21, 128, 61, 0.15);
+            
+            --slate-50: #f8fafc;
+            --slate-100: #f1f5f9;
+            --slate-200: #e2e8f0;
+            --slate-300: #cbd5e1;
+            --slate-500: #64748b;
+            --slate-700: #334155;
+            --slate-900: #0f172a;
+            
+            --amber-50: #fffbeb;
+            --amber-100: #fef3c7;
+            --amber-600: #d97706;
+            --amber-900: #78350f;
+
+            --blue-50: #eff6ff;
+            --blue-100: #dbeafe;
+            --blue-600: #2563eb;
+
+            --rose-50: #fff1f2;
+            --rose-100: #ffe4e6;
+            --rose-600: #e11d48;
+            --rose-700: #be123c;
+
+            --radius-xl: 1.25rem;
+            --radius-lg: 0.85rem;
+            --radius-md: 0.6rem;
+
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
+            --shadow-lg: 0 8px 25px -4px rgba(21, 128, 61, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            background-color: var(--slate-50);
+            color: var(--slate-900);
+            font-family: 'Kanit', sans-serif;
+            line-height: 1.5;
+            padding: 0.75rem 0.5rem 3rem 0.5rem;
+            min-height: 100vh;
+        }
+
+        button, input, select {
+            font-family: inherit;
+        }
+
+        .calc-app {
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        /* Top Brand Header with Durian Farm Hero Image */
+        .app-header {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.45) 0%, rgba(15, 23, 42, 0.82) 100%), url('durian_farm_hero.png') center/cover no-repeat;
+            border-radius: var(--radius-lg);
+            padding: 1rem 1.1rem;
+            color: #ffffff;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            margin-bottom: 0.85rem;
+            position: relative;
+            overflow: hidden;
+            border: none;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.22);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 0.75rem;
+            display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.3s;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
-        .modal-overlay.show {
-            display: flex;
-            opacity: 1;
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            line-height: 1.25;
+            letter-spacing: -0.01em;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
         }
 
-        .modal {
-            background: var(--surface);
-            padding: 2rem;
-            border-radius: 1.2rem;
-            width: 90%;
-            max-width: 450px;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            transform: translateY(-20px);
-            transition: 0.3s;
+        .header-subtitle {
+            font-size: 0.8rem;
+            opacity: 0.95;
+            margin-top: 0.15rem;
+            font-weight: 400;
+            display: block;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
         }
 
-        .modal-overlay.show .modal {
-            transform: translateY(0);
+        .engine-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.2rem 0.65rem;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            margin-top: 0.35rem;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
 
-        .modal h3 {
+        /* Form Card */
+        .form-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-sm);
+            padding: 1.1rem 1rem;
+        }
+
+        .section-block {
             margin-bottom: 1rem;
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: var(--primary);
+            padding-bottom: 0.9rem;
+            border-bottom: 1px solid var(--slate-100);
         }
 
-        .modal p {
-            color: var(--text);
-            margin-bottom: 1.5rem;
-            line-height: 1.5;
-            font-size: 1.05rem;
+        .section-block:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
         }
 
-        .modal-actions {
+        .block-header {
             display: flex;
-            gap: 1rem;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .block-num {
+            width: 24px;
+            height: 24px;
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 0.8rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
             justify-content: center;
-            margin-top: 1.5rem;
+            border: 1px solid var(--primary-border);
+            flex-shrink: 0;
         }
 
-        .btn-modal {
-            padding: 0.8rem 1.5rem;
-            border-radius: 0.6rem;
-            border: none;
-            cursor: pointer;
+        .block-title {
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: var(--slate-900);
+        }
+
+        /* Compact Grids */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.6rem;
+        }
+
+        .form-group {
+            margin-bottom: 0.75rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--slate-700);
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .req-star {
+            color: var(--rose-600);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            height: 40px;
+            padding: 0 0.65rem;
+            background: var(--slate-50);
+            border: 1.5px solid var(--slate-200);
+            border-radius: var(--radius-md);
+            font-size: 0.88rem;
+            color: var(--slate-900);
+            transition: all 0.2s ease;
+        }
+
+        .input-wrapper input {
+            padding-right: 2.8rem;
+            font-weight: 700;
+        }
+
+        .input-tag {
+            position: absolute;
+            right: 10px;
+            color: var(--slate-500);
+            font-size: 0.78rem;
             font-weight: 600;
-            font-size: 1rem;
-            transition: 0.2s;
-            flex: 1;
+            pointer-events: none;
         }
 
-        .btn-success {
+        .form-select {
+            appearance: none;
+            cursor: pointer;
+            padding-right: 2rem;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%252364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 14px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            background: #ffffff;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-ring);
+        }
+
+        /* Preset Pills (Compact) */
+        .preset-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 0.35rem;
+            flex-wrap: wrap;
+        }
+
+        .preset-tag {
+            font-size: 0.7rem;
+            color: var(--slate-500);
+            font-weight: 600;
+        }
+
+        .btn-pill {
+            background: var(--slate-100);
+            color: var(--slate-700);
+            border: 1px solid var(--slate-200);
+            border-radius: 12px;
+            padding: 0.15rem 0.5rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-pill:hover, .btn-pill.active {
             background: var(--primary);
-            color: white;
+            color: #ffffff;
+            border-color: var(--primary);
         }
 
-        .btn-cancel {
-            background: #475569;
-            color: white;
+        /* Checkbox Chips */
+        .chip-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
         }
 
-        .btn-modal:hover {
-            opacity: 0.8;
-            transform: scale(1.02);
+        .chip-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0.35rem 0.7rem;
+            background: var(--slate-50);
+            border: 1.5px solid var(--slate-200);
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--slate-700);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .chip-item input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--primary);
+        }
+
+        .chip-item.active {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary-dark);
+        }
+
+        /* Toggle Box Card */
+        .toggle-box {
+            background: var(--primary-light);
+            border: 1.5px dashed var(--primary-border);
+            border-radius: var(--radius-md);
+            padding: 0.75rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .toggle-box input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+        }
+
+        .toggle-label strong {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--primary-dark);
+        }
+
+        .toggle-label span {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--slate-500);
+        }
+
+        .wet-soil-container {
+            display: none;
+            margin-top: 0.6rem;
+        }
+
+        .wet-soil-container.visible {
+            display: block;
+        }
+
+        .soil-lab-container {
+            display: none;
+            margin-top: 0.75rem;
+            padding: 0.85rem;
+            background: #fafafa;
+            border: 1px dashed var(--slate-300);
+            border-radius: var(--radius-md);
+        }
+
+        .soil-lab-container.visible {
+            display: block;
+        }
+
+        /* Primary Action Button */
+        .btn-calc-submit {
+            width: 100%;
+            height: 46px;
+            background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 999px;
+            font-size: 0.98rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            margin-top: 0.85rem;
+            touch-action: manipulation;
+        }
+
+        .btn-calc-submit:active {
+            transform: translateY(1px);
+        }
+
+        .error-banner {
+            display: none;
+            background: var(--rose-50);
+            border: 1.5px solid var(--rose-100);
+            color: var(--rose-700);
+            padding: 0.65rem 0.85rem;
+            border-radius: var(--radius-md);
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+        }
+
+        .error-banner.visible {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Output Section */
+        .result-card {
+            display: none;
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--slate-200);
+            box-shadow: var(--shadow-md);
+            padding: 1.1rem 1rem;
+            margin-top: 1rem;
+            animation: slideUp 0.3s ease forwards;
+        }
+
+        .result-card.visible {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--slate-100);
+            margin-bottom: 1rem;
+            gap: 0.5rem;
+        }
+
+        .result-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--slate-900);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1.3;
+        }
+
+        .badge-status {
+            padding: 0.2rem 0.65rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .badge-status.normal {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            border: 1px solid var(--primary-border);
+        }
+
+        .badge-status.stop {
+            background: var(--rose-50);
+            color: var(--rose-700);
+            border: 1px solid var(--rose-100);
+        }
+
+        /* Target N-P-K Card */
+        .npk-hero-banner {
+            background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%);
+            border: 1.5px solid var(--primary-border);
+            border-radius: var(--radius-md);
+            padding: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .npk-hero-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            gap: 0.5rem;
+        }
+
+        .npk-hero-label {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: var(--slate-900);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .npk-pill-badge {
+            font-size: 1.15rem;
+            font-weight: 900;
+            background: var(--primary-dark);
+            color: #ffffff;
+            padding: 0.25rem 0.85rem;
+            border-radius: 20px;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .npk-stat-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .npk-stat-tile {
+            background: #ffffff;
+            border-radius: var(--radius-md);
+            padding: 0.6rem 0.3rem;
+            text-align: center;
+            border: 1px solid var(--slate-200);
+        }
+
+        .npk-tile-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--slate-500);
+            margin-bottom: 0.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+        }
+
+        .dot-tag { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+        .dot-n { background: var(--primary); }
+        .dot-p { background: var(--amber-600); }
+        .dot-k { background: var(--blue-600); }
+
+        .npk-tile-val {
+            font-size: 1.35rem;
+            font-weight: 900;
+            line-height: 1.1;
+        }
+
+        .npk-stat-tile.n .npk-tile-val { color: var(--primary); }
+        .npk-stat-tile.p .npk-tile-val { color: var(--amber-600); }
+        .npk-stat-tile.k .npk-tile-val { color: var(--blue-600); }
+
+        .npk-tile-sub {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--slate-500);
+        }
+
+        .npk-bar-wrapper {
+            display: flex;
+            height: 18px;
+            border-radius: 9px;
+            overflow: hidden;
+            background: var(--slate-200);
+        }
+
+        .npk-bar-seg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .npk-bar-n { background: linear-gradient(90deg, #16a34a, #15803d); }
+        .npk-bar-p { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .npk-bar-k { background: linear-gradient(90deg, #3b82f6, #2563eb); }
+
+        /* Metric Grid 4 Cards */
+        .metric-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .metric-card {
+            background: var(--slate-50);
+            border-radius: var(--radius-md);
+            padding: 0.75rem 0.5rem;
+            text-align: center;
+            border: 1px solid var(--slate-200);
+        }
+
+        .metric-card.accent {
+            background: var(--primary-light);
+            border-color: var(--primary-border);
+        }
+
+        .metric-icon {
+            font-size: 1.2rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .metric-val {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--slate-900);
+            overflow-wrap: anywhere;
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            color: var(--slate-500);
+            font-weight: 600;
+            margin-top: 0.15rem;
+        }
+
+        /* Breakdown Per Tree & Plot */
+        .breakdown-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .breakdown-box {
+            background: var(--slate-50);
+            border-radius: var(--radius-md);
+            padding: 0.6rem 0.3rem;
+            text-align: center;
+            border: 1px solid var(--slate-200);
+        }
+
+        .breakdown-box small {
+            display: block;
+            font-size: 0.68rem;
+            color: var(--slate-500);
+            margin-bottom: 0.15rem;
+        }
+
+        .breakdown-box strong {
+            display: block;
+            font-size: 0.92rem;
+            font-weight: 800;
+        }
+
+        /* Advisory Notes & Details List */
+        .info-panel {
+            background: var(--slate-50);
+            border-radius: var(--radius-md);
+            padding: 0.85rem;
+            border: 1px solid var(--slate-200);
+            margin-bottom: 0.85rem;
+            font-size: 0.8rem;
+        }
+
+        .info-panel-title {
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .info-list {
+            padding-left: 1rem;
+            color: var(--slate-700);
+        }
+
+        .info-list li {
+            margin-bottom: 0.25rem;
+        }
+
+        .alert-stop-panel {
+            background: var(--rose-50);
+            border: 1.5px solid var(--rose-100);
+            border-radius: var(--radius-md);
+            padding: 0.85rem;
+            color: var(--rose-700);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .alert-stop-panel strong {
+            font-size: 1.15rem;
+            display: block;
+            margin: 0.2rem 0;
+        }
+
+        .btn-action-row {
+            display: flex;
+            gap: 0.6rem;
+            margin-top: 1rem;
+        }
+
+        .btn-outline-action {
+            flex: 1;
+            height: 42px;
+            background: #ffffff;
+            border: 1.5px solid var(--primary);
+            color: var(--primary-dark);
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.82rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        /* Hidden Print Header & Footer for On-Screen View */
+        .print-only-block {
+            display: none;
+        }
+
+        /* Media Queries for Desktop enhancement */
+        @media (min-width: 641px) {
+            body { padding: 1.5rem 1rem 4rem 1rem; }
+            .app-header { padding: 1.5rem 2rem; border-radius: var(--radius-xl); margin-bottom: 1.5rem; }
+            .header-icon { width: 56px; height: 56px; font-size: 2rem; }
+            .header-title { font-size: 1.6rem; }
+            .header-subtitle { font-size: 0.88rem; }
+            .form-card { padding: 1.8rem; border-radius: var(--radius-xl); }
+            .block-title { font-size: 1.1rem; }
+            .form-label { font-size: 0.88rem; }
+            .form-input, .form-select { height: 46px; font-size: 0.95rem; }
+            .btn-calc-submit { height: 52px; font-size: 1.05rem; }
+            .metric-grid-4 { grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+            .metric-card { padding: 1.1rem 0.85rem; }
+            .metric-val { font-size: 1.35rem; }
+            .npk-tile-val { font-size: 1.8rem; }
+            .breakdown-box strong { font-size: 1.05rem; }
+        }
+
+        /* Official Print & PDF Report Styling */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 1.2cm;
+            }
+
+            body {
+                padding: 0 !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                font-family: 'Kanit', sans-serif !important;
+            }
+
+            .form-card, .btn-action-row, .app-header {
+                display: none !important;
+            }
+
+            .result-card {
+                display: block !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            .print-only-block {
+                display: block !important;
+            }
+
+            .print-header-doc {
+                border-bottom: 2px solid #15803d;
+                padding-bottom: 12px;
+                margin-bottom: 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+            }
+
+            .print-header-title {
+                font-size: 1.3rem;
+                font-weight: 800;
+                color: #15803d;
+                margin-bottom: 2px;
+            }
+
+            .print-header-sub {
+                font-size: 0.82rem;
+                color: #475569;
+            }
+
+            .print-header-meta {
+                font-size: 0.78rem;
+                text-align: right;
+                color: #475569;
+            }
+
+            .print-param-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 16px;
+                font-size: 0.82rem;
+            }
+
+            .print-param-table th {
+                background: #f0fdf4;
+                color: #166534;
+                padding: 6px 10px;
+                border: 1px solid #cbd5e1;
+                text-align: left;
+                width: 25%;
+                font-weight: 700;
+            }
+
+            .print-param-table td {
+                padding: 6px 10px;
+                border: 1px solid #cbd5e1;
+                width: 25%;
+            }
+
+            .print-signature-row {
+                display: flex !important;
+                justify-content: space-between;
+                margin-top: 40px;
+                padding-top: 20px;
+            }
+
+            .print-sig-box {
+                text-align: center;
+                width: 42%;
+                font-size: 0.82rem;
+            }
+
+            .print-sig-line {
+                border-bottom: 1px dashed #64748b;
+                height: 35px;
+                margin-bottom: 8px;
+            }
+
+            .npk-hero-banner, .metric-card, .breakdown-box, .info-panel {
+                border: 1px solid #cbd5e1 !important;
+                box-shadow: none !important;
+                page-break-inside: avoid;
+            }
         }
     </style>
 </head>
-
 <body>
-    <nav class="navbar">
-        <div class="nav-left">
-            <button class="hamburger-btn" onclick="toggleSidebar()">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-            </button>
-            <div class="logo">Water system control</div>
-        </div>
-        <div class="nav-links">
-            <!-- Legacy hidden by CSS -->
-        </div>
-    </nav>
+    <div class="calc-app">
+        <!-- Compact Header Banner -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-icon">🍃</div>
+                <div>
+                    <h1 class="header-title">ระบบคำนวณการให้ปุ๋ยทางน้ำ<br>สำหรับทุเรียน</h1>
+                    <span class="header-subtitle">ประเมินอัตราปุ๋ยน้ำตามพื้นที่ทรงพุ่ม ระยะพัฒนาการ สภาพอากาศ สภาพต้น และผลวิเคราะห์ดิน</span>
+                </div>
+            </div>
+        </header>
 
-    <!-- Sidebar Menu -->
-    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="logo" style="font-size: 1.2rem;">Menu</div>
-            <button class="close-btn" onclick="toggleSidebar()">✕</button>
-        </div>
-        <div class="nav-links-sidebar">
-            <a href="index.html">ภาพรวม (Dashboard)</a>
-            <a href="control.html">ควบคุม (Control)</a>
-            <a href="calculator.html" class="active">คำนวณ (Calculator)</a>
-            <a href="schedule.html">ตั้งเวลา (Schedule)</a>
-            <a href="history.html">ประวัติ (History)</a>
-            <a href="admin.html">ตั้งค่าระบบ (Admin)</a>
-        </div>
+        <!-- Main Form Container -->
+        <main class="main-grid">
+            <form class="form-card" id="calcForm" onsubmit="event.preventDefault();">
+                
+                <!-- Section 1: Tree & Canopy Info (Compact Side-by-Side Grid) -->
+                <div class="section-block">
+                    <div class="block-header">
+                        <div class="block-num">1</div>
+                        <h2 class="block-title">ข้อมูลทรงพุ่ม & จำนวนต้น</h2>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label" for="canopyDiameter">
+                                เส้นผ่านศูนย์กลางทรงพุ่ม (ม.) <span class="req-star">*</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <input type="number" id="canopyDiameter" class="form-input" value="8" min="0.1" step="0.1" placeholder="8.0">
+                                <span class="input-tag">เมตร</span>
+                            </div>
+                            <div class="preset-row">
+                                <span class="preset-tag">ตัวอย่าง:</span>
+                                <button type="button" class="btn-pill" onclick="setPreset('canopyDiameter', 4)">4m</button>
+                                <button type="button" class="btn-pill" onclick="setPreset('canopyDiameter', 6)">6m</button>
+                                <button type="button" class="btn-pill" onclick="setPreset('canopyDiameter', 8)">8m</button>
+                                <button type="button" class="btn-pill" onclick="setPreset('canopyDiameter', 10)">10m</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="treeCount">
+                                จำนวนต้นทุเรียน (ต้น) <span class="req-star">*</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <input type="number" id="treeCount" class="form-input" value="10" min="1" step="1" placeholder="10">
+                                <span class="input-tag">ต้น</span>
+                            </div>
+                            <div class="preset-row">
+                                <span class="preset-tag">ตัวอย่าง:</span>
+                                <button type="button" class="btn-pill" onclick="setPreset('treeCount', 5)">5ต้น</button>
+                                <button type="button" class="btn-pill" onclick="setPreset('treeCount', 10)">10ต้น</button>
+                                <button type="button" class="btn-pill" onclick="setPreset('treeCount', 25)">25ต้น</button>
+                                <button type="button" class="btn-pill" onclick="setPreset('treeCount', 50)">50ต้น</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label" for="growthStage">
+                            ระยะการเจริญเติบโต / พัฒนาการทุเรียน <span class="req-star">*</span>
+                        </label>
+                        <select id="growthStage" class="form-select">
+                            <option value="สร้างชุดใบ">ระยะสร้างชุดใบ (เน้น N สูง อัตราส่วน 4 : 1 : 1)</option>
+                            <option value="สะสมอาหาร">ระยะสะสมอาหาร (เน้น P, K สูง อัตราส่วน 1 : 5 : 5)</option>
+                            <option value="พัฒนาดอกเดือน1">ระยะพัฒนาดอกเดือน 1 (อัตราส่วน 1 : 5 : 5)</option>
+                            <option value="พัฒนาดอกเดือน2">ระยะพัฒนาดอกเดือน 2 (อัตราส่วน 1 : 1 : 1)</option>
+                            <option value="ติดผลเล็ก">ระยะติดผลเล็ก เดือน 1–2 (อัตราส่วน 2 : 1 : 4)</option>
+                            <option value="พัฒนาผล">ระยะพัฒนาผล เดือน 3 (ขยายผล อัตราส่วน 3 : 1 : 6)</option>
+                            <option value="ปรับปรุงคุณภาพ">ระยะปรับปรุงคุณภาพ เดือน 4 (สร้างความหวาน อัตราส่วน 1 : 2 : 8)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Section 2: Environment & Weather -->
+                <div class="section-block">
+                    <div class="block-header">
+                        <div class="block-num">2</div>
+                        <h2 class="block-title">สภาพอากาศและสภาพแวดล้อม</h2>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="weather">สภาพอากาศปัจจุบัน</label>
+                        <select id="weather" class="form-select" onchange="toggleWetSoilBox()">
+                            <option value="ปกติ">อากาศปกติ (เหมาะแก่การให้ปุ๋ย)</option>
+                            <option value="ฟ้าครึ้ม">ฟ้าครึ้ม (ปรับลดปริมาณเล็กน้อย)</option>
+                            <option value="เมฆมาก">เมฆมาก (ปรับลดปริมาณเล็กน้อย)</option>
+                            <option value="อากาศแห้ง">อากาศแห้ง / แดดจัด / ลมแรง</option>
+                            <option value="หลังฝนตก">หลังฝนตก</option>
+                            <option value="ฝนชุก">ฝนตกชุก / ตกต่อเนื่อง (งดจ่ายปุ๋ยน้ำ)</option>
+                        </select>
+                    </div>
+
+                    <div class="wet-soil-container" id="wetSoilBox">
+                        <label class="toggle-box">
+                            <input type="checkbox" id="soilStillWet">
+                            <div class="toggle-label">
+                                <strong>🌧️ ดินยังแฉะ มีน้ำขัง หรือระบายน้ำไม่ทัน</strong>
+                                <span>เปิดไว้เพื่อระงับการจ่ายปุ๋ยชั่วคราวเพื่อความปลอดภัยของราก</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Section 3: Crop Health & Symptoms -->
+                <div class="section-block">
+                    <div class="block-header">
+                        <div class="block-num">3</div>
+                        <h2 class="block-title">สภาพต้นทุเรียนและปัญหาที่พบ</h2>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="treeCondition">สภาพต้นโดยรวม</label>
+                        <select id="treeCondition" class="form-select">
+                            <option value="สมบูรณ์">ต้นสมบูรณ์ แข็งแรงตามปกติ</option>
+                            <option value="เฝ้าระวัง">พบความผิดปกติเล็กน้อย ต้องเฝ้าระวัง</option>
+                            <option value="เครียดเล็กน้อย">ต้นมีอาการเครียดเล็กน้อย (ปรับลด 25%)</option>
+                            <option value="เครียดปานกลาง">ต้นมีอาการเครียดปานกลาง (ปรับลด 50%)</option>
+                            <option value="เครียดรุนแรง">ต้นมีอาการเครียดรุนแรง (ระงับการจ่ายปุ๋ย)</option>
+                            <option value="รากวิกฤต">พบภาวะรากเน่า / รากขาดอากาศ (ระงับการจ่ายปุ๋ย)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">อาการผิดปกติที่พบเพิ่มเติม (ถ้ามี)</label>
+                        <div class="chip-grid" id="crisisGroup">
+                            <label class="chip-item">
+                                <input type="checkbox" value="อาการใบไหม้" onchange="toggleChip(this)"> 🍂 ใบไหม้
+                            </label>
+                            <label class="chip-item">
+                                <input type="checkbox" value="แตกใบอ่อน" onchange="toggleChip(this)"> 🌱 แตกใบอ่อน
+                            </label>
+                            <label class="chip-item">
+                                <input type="checkbox" value="ผลร่วง" onchange="toggleChip(this)"> 🍈 ผลร่วง
+                            </label>
+                            <label class="chip-item">
+                                <input type="checkbox" value="ดอกร่วง" onchange="toggleChip(this)"> 🌸 ดอกร่วง
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Soil Lab Test (Optional) -->
+                <div class="section-block">
+                    <div class="block-header">
+                        <div class="block-num">4</div>
+                        <h2 class="block-title">ผลวิเคราะห์ดินทางห้องปฏิบัติการ (ถ้ามี)</h2>
+                    </div>
+
+                    <label class="toggle-box">
+                        <input type="checkbox" id="hasSoilAnalysis" onchange="toggleSoilLabSection()">
+                        <div class="toggle-label">
+                            <strong>🧪 มีผลวิเคราะห์ดินจากห้องปฏิบัติการ</strong>
+                            <span>เปิดช่องกรอกค่า N, P, K, pH, OM, EC เพื่อปรับจูนสูตรปุ๋ยอย่างแม่นยำ</span>
+                        </div>
+                    </label>
+
+                    <div class="soil-lab-container" id="soilFields">
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label class="form-label" for="soilN">N (mg/kg)</label>
+                                <input type="number" id="soilN" class="form-input" min="0" step="0.1" placeholder="เช่น 25">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="soilP">P (mg/kg)</label>
+                                <input type="number" id="soilP" class="form-input" min="0" step="0.1" placeholder="เช่น 35">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="soilK">K (mg/kg)</label>
+                                <input type="number" id="soilK" class="form-input" min="0" step="0.1" placeholder="เช่น 120">
+                            </div>
+                        </div>
+
+                        <div class="grid-3" style="margin-top: 0.5rem;">
+                            <div class="form-group">
+                                <label class="form-label" for="soilPH">pH ดิน</label>
+                                <input type="number" id="soilPH" class="form-input" min="0" max="14" step="0.1" placeholder="5.5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="soilOM">OM (%)</label>
+                                <input type="number" id="soilOM" class="form-input" min="0" step="0.1" placeholder="2.5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="soilEC">EC (dS/m)</label>
+                                <input type="number" id="soilEC" class="form-input" min="0" step="0.1" placeholder="0.8">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Alert Box -->
+                <div class="error-banner" id="errorBox"></div>
+
+                <!-- Submit Button -->
+                <button type="button" class="btn-calc-submit" id="calculateBtn" onclick="runCalculation()">
+                    <span>⚡</span> คำนวณการให้ปุ๋ยทางน้ำ
+                </button>
+            </form>
+
+            <!-- Results Card -->
+            <div class="result-card" id="resultCard">
+                <div class="result-header">
+                    <div class="result-title">
+                        <span>📊</span> สรุปผลคำนวณ & อัตราจ่ายปุ๋ยน้ำ
+                    </div>
+                    <div class="badge-status normal" id="statusBadge">
+                        <span>✓</span> พร้อมใช้งาน
+                    </div>
+                </div>
+
+                <!-- Dynamic Results Inner Body -->
+                <div id="resultBody"></div>
+            </div>
+        </main>
     </div>
 
-    <div class="container">
-        <h1>Durian Needs Calculator</h1>
-        <p class="subtitle">คำนวณปริมาณน้ำและปุ๋ยสำหรับต้นทุเรียนของคุณ (อ้างอิงจากฐานข้อมูล Admin)</p>
+    <!-- Script Logic (Exact fertigation_test.html Calculations) -->
+    <script>
+        "use strict";
 
-        <div class="form-card" style="padding: 2rem; border-radius: 1.2rem;">
-            <div
-                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
-                <div class="form-group" style="margin: 0;">
-                    <label
-                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">อายุต้นทุเรียน
-                        (ปี)</label>
-                    <input type="number" id="age" min="1" max="50" placeholder="ตัวอย่าง: 5"
-                        style="height: 50px; border-radius: 0.6rem;">
-                </div>
-                <div class="form-group" style="margin: 0;">
-                    <label
-                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">ความกว้างทรงพุ่ม
-                        (เมตร)</label>
-                    <input type="number" id="canopy" min="0.5" max="15" step="0.1" placeholder="ตัวอย่าง: 4.5"
-                        style="height: 50px; border-radius: 0.6rem;">
-                </div>
-            </div>
+        // Base Rates Dictionary (exact from fertigation_test.html)
+        const fertilizerRates = {
+            "สร้างชุดใบ": { label: "ระยะสร้างชุดใบ", N: 4, P: 1, K: 1 },
+            "สะสมอาหาร": { label: "ระยะสะสมอาหาร", N: 1, P: 5, K: 5 },
+            "พัฒนาดอกเดือน1": { label: "ระยะพัฒนาดอกเดือน 1", N: 1, P: 5, K: 5 },
+            "พัฒนาดอกเดือน2": { label: "ระยะพัฒนาดอกเดือน 2", N: 1, P: 1, K: 1 },
+            "ติดผลเล็ก": { label: "ระยะติดผลเล็ก เดือน 1–2", N: 2, P: 1, K: 4 },
+            "พัฒนาผล": { label: "ระยะพัฒนาผล เดือน 3", N: 3, P: 1, K: 6 },
+            "ปรับปรุงคุณภาพ": { label: "ระยะปรับปรุงคุณภาพ เดือน 4", N: 1, P: 2, K: 8 }
+        };
 
-            <div
-                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
-                <div class="form-group" style="margin: 0;">
-                    <label
-                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">ระยะการเจริญเติบโต</label>
-                    <select id="stage" style="height: 50px; border-radius: 0.6rem;">
-                        <option value="vegetative">ระยะแตกใบอ่อน (Vegetative)</option>
-                        <option value="flowering">ระยะออกดอก (Flowering)</option>
-                        <option value="fruiting">ระยะติดผล (Fruiting)</option>
-                        <option value="post_harvest">ระยะหลังเก็บเกี่ยว (Post Harvest)</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin: 0;">
-                    <label
-                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">จำนวนต้นทุเรียนในโซน</label>
-                    <input type="number" id="trees" min="1" max="1000" value="50"
-                        style="height: 50px; border-radius: 0.6rem;">
-                </div>
-            </div>
+        const soilThresholds = {
+            nitrogen: { medium: 20, high: 40, mediumFactor: 0.75, highFactor: 0.50 },
+            phosphorus: { medium: 15, high: 30, mediumFactor: 0.75, highFactor: 0.50 },
+            potassium: { medium: 100, high: 200, mediumFactor: 0.75, highFactor: 0.50 },
+            ec: { warning: 2, high: 4, warningFactor: 0.75 }
+        };
 
-            <button class="btn-submit" onclick="calculateNeeds()"
-                style="padding: 1rem; font-size: 1.1rem; border-radius: 0.6rem; width: 100%;">คำนวณปริมาณน้ำและปุ๋ย</button>
-        </div>
-    </div>
+        const weatherRules = {
+            "ปกติ": { factor: 1, description: "สภาพอากาศปกติ (เหมาะแก่การให้ปุ๋ย)" },
+            "ฟ้าครึ้ม": { factor: 0.75, description: "ปรับปริมาณให้เหมาะกับสภาพฟ้าครึ้ม" },
+            "เมฆมาก": { factor: 0.75, description: "ปรับปริมาณให้เหมาะกับสภาพเมฆมาก" },
+            "อากาศแห้ง": { factor: 1, description: "ควรให้ในช่วงเช้าหรือเย็นและตรวจความชื้นดิน" },
+            "หลังฝนตก": { factor: 1, description: "สามารถให้ได้เมื่อดินระบายน้ำดีและไม่แฉะ" },
+            "ฝนชุก": { factor: 0, description: "ฝนตกชุกหรือตกต่อเนื่อง (งดจ่ายปุ๋ย)" }
+        };
 
-    <!-- Custom Modal -->
-    <div class="modal-overlay" id="calc-modal">
-        <div class="modal">
-            <h3>✅ ผลการประเมินที่แนะนำ</h3>
-            <div
-                style="background: rgba(16, 185, 129, 0.1); padding: 1.5rem; border-radius: 0.8rem; margin: 1rem 0; text-align: left;">
-                <div id="water-result" style="color: var(--primary); margin-bottom: 1rem;">ปริมาณน้ำ: -- ลิตร/วัน</div>
-                <div id="fert-result" style="color: var(--primary);">ปริมาณปุ๋ย: -- กรัม/ต้น</div>
-            </div>
-            <p id="calc-log" style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1rem;"></p>
-            <div class="modal-actions">
-                <button class="btn-modal btn-cancel" onclick="closeModal()">แก้ไข (Edit)</button>
-                <button class="btn-modal btn-success" onclick="autoApply()">OK (นำไปตั้งเวลา)</button>
-            </div>
-        </div>
-    </div>
+        const treeConditionRules = {
+            "สมบูรณ์": { factor: 1, description: "ต้นสมบูรณ์ แข็งแรงตามปกติ" },
+            "เฝ้าระวัง": { factor: 1, description: "พบความผิดปกติเล็กน้อย ควรติดตามอาการ" },
+            "เครียดเล็กน้อย": { factor: 0.75, description: "ต้นมีอาการเครียดเล็กน้อย" },
+            "เครียดปานกลาง": { factor: 0.50, description: "ต้นมีอาการเครียดปานกลาง" },
+            "เครียดรุนแรง": { factor: 0, description: "ต้นมีอาการเครียดรุนแรง (ระงับปุ๋ย)" },
+            "รากวิกฤต": { factor: 0, description: "พบภาวะรากเน่า รากขาดอากาศ หรือระบบรากวิกฤต" }
+        };
 
-    <!-- Firebase SDK & Logic -->
-    <script type="module" src="firebase_config.js"></script>
-    <script type="module">
-        import { db, ref, get } from './firebase_config.js';
+        const crisisRules = {
+            "อาการใบไหม้": { factor: 0.50, advice: "อาการใบไหม้: ควรตรวจค่า EC ความเข้มข้นของปุ๋ยน้ำ การให้น้ำ และสภาพราก" },
+            "แตกใบอ่อน": { factor: 0.75, advice: "แตกใบอ่อน: ควรหลีกเลี่ยงการเร่งปุ๋ยและติดตามความสมบูรณ์ของใบอ่อน" },
+            "ผลร่วง": { factor: 0.50, advice: "ผลร่วง: ควรตรวจสมดุลน้ำ สภาพราก และความเหมาะสมของแคลเซียมกับโบรอน" },
+            "ดอกร่วง": { factor: 0.50, advice: "ดอกร่วง: ควรตรวจสภาพอากาศ ความชื้น และการใช้สารเสริมในระยะดอก" }
+        };
 
-        window.calculateNeeds = async function () {
-            const age = parseFloat(document.getElementById('age').value);
-            const canopy = parseFloat(document.getElementById('canopy').value);
-            const stage = document.getElementById('stage').value;
-            const trees = parseInt(document.getElementById('trees').value) || 50;
+        const BASE_RATE_ML_PER_SQM = 1;
 
-            if (!age || !canopy || !trees) {
-                alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+        // Interactive UI Handlers
+        function setPreset(inputId, val) {
+            document.getElementById(inputId).value = val;
+        }
+
+        function toggleChip(input) {
+            if(input.checked) input.parentElement.classList.add('active');
+            else input.parentElement.classList.remove('active');
+        }
+
+        function toggleWetSoilBox() {
+            const weather = document.getElementById('weather').value;
+            const wetBox = document.getElementById('wetSoilBox');
+            if (weather === "หลังฝนตก") {
+                wetBox.classList.add('visible');
+            } else {
+                wetBox.classList.remove('visible');
+                document.getElementById('soilStillWet').checked = false;
+            }
+        }
+
+        function toggleSoilLabSection() {
+            const checked = document.getElementById('hasSoilAnalysis').checked;
+            const soilFields = document.getElementById('soilFields');
+            if (checked) soilFields.classList.add('visible');
+            else soilFields.classList.remove('visible');
+        }
+
+        function getNum(id) {
+            const el = document.getElementById(id);
+            if (!el || el.value.trim() === "") return null;
+            const v = parseFloat(el.value);
+            return isNaN(v) ? null : v;
+        }
+
+        function showError(msg) {
+            const errBox = document.getElementById('errorBox');
+            errBox.innerHTML = `⚠️ ${msg}`;
+            errBox.classList.add('visible');
+            errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function clearError() {
+            const errBox = document.getElementById('errorBox');
+            errBox.innerHTML = '';
+            errBox.classList.remove('visible');
+        }
+
+        function formatVolume(ml) {
+            const safe = Math.max(ml || 0, 0);
+            if (safe >= 1000) {
+                return (safe / 1000).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ลิตร';
+            }
+            return safe.toLocaleString('th-TH', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' มิลลิลิตร';
+        }
+
+        function getNutrientAssessment(value, threshold, nutrientName) {
+            if (value > threshold.high) {
+                return { factor: threshold.highFactor, detail: `${nutrientName} (${value} mg/kg) อยู่ในระดับสูง ปรับลดกลุ่มนี้ 50%` };
+            }
+            if (value > threshold.medium) {
+                return { factor: threshold.mediumFactor, detail: `${nutrientName} (${value} mg/kg) อยู่ในระดับค่อนข้างสูง ปรับลดกลุ่มนี้ 25%` };
+            }
+            return { factor: 1, detail: `${nutrientName} (${value} mg/kg) อยู่ในระดับปกติ` };
+        }
+
+        function assessSoil(soil) {
+            const nRes = getNutrientAssessment(soil.n, soilThresholds.nitrogen, "ไนโตรเจน N");
+            const pRes = getNutrientAssessment(soil.p, soilThresholds.phosphorus, "ฟอสฟอรัส P");
+            const kRes = getNutrientAssessment(soil.k, soilThresholds.potassium, "โพแทสเซียม K");
+
+            const details = [nRes.detail, pRes.detail, kRes.detail];
+            const warnings = [];
+            const stopReasons = [];
+            let ecSafetyFactor = 1;
+
+            if (soil.om !== null) {
+                details.push(`OM (${soil.om}%) ใช้เป็นข้อมูลประกอบ โดยไม่ปรับลด N ซ้ำ`);
+            }
+
+            if (soil.ec !== null) {
+                if (soil.ec >= soilThresholds.ec.high) {
+                    ecSafetyFactor = 0;
+                    stopReasons.push(`ค่า EC (${soil.ec} dS/m) สูงวิกฤต ห้ามจ่ายปุ๋ยเพื่อป้องกันรากเสียหาย`);
+                } else if (soil.ec >= soilThresholds.ec.warning) {
+                    ecSafetyFactor = soilThresholds.ec.warningFactor;
+                    details.push(`ค่า EC (${soil.ec} dS/m) ค่อนข้างสูง ปรับลดปริมาณรวม 25%`);
+                } else {
+                    details.push(`ค่า EC (${soil.ec} dS/m) อยู่ในเกณฑ์ปกติ`);
+                }
+            }
+
+            if (soil.ph !== null) {
+                if (soil.ph < 5.0) warnings.push(`ค่า pH (${soil.ph}) เป็นกรดจัด ควรตรวจการปรับปรุงดิน`);
+                else if (soil.ph > 7.0) warnings.push(`ค่า pH (${soil.ph}) เป็นด่าง อาจลดการดูดซึมธาตุอาหาร`);
+            }
+
+            return {
+                nutrientFactors: { N: nRes.factor, P: pRes.factor, K: kRes.factor },
+                ecSafetyFactor, details, warnings, stopReasons
+            };
+        }
+
+        function assessTreeCondition(treeCondKey, crisisList) {
+            const rule = treeConditionRules[treeCondKey] || treeConditionRules["สมบูรณ์"];
+            const factors = [rule.factor];
+            const advice = [];
+
+            crisisList.forEach(c => {
+                const cr = crisisRules[c];
+                if (cr) {
+                    factors.push(cr.factor);
+                    advice.push(cr.advice);
+                }
+            });
+
+            return {
+                factor: Math.min(...factors),
+                description: rule.description,
+                advice
+            };
+        }
+
+        // Calculation Core Engine
+        window.runCalculation = function() {
+            clearError();
+
+            const diameter = getNum('canopyDiameter');
+            const treeCount = getNum('treeCount');
+
+            if (diameter === null || diameter <= 0) {
+                showError("กรุณากรอกเส้นผ่านศูนย์กลางทรงพุ่มให้มากกว่า 0 เมตร");
+                return;
+            }
+            if (treeCount === null || treeCount < 1 || !Number.isInteger(treeCount)) {
+                showError("กรุณากรอกจำนวนต้นเป็นจำนวนเต็มอย่างน้อย 1 ต้น");
                 return;
             }
 
-            try {
-                // Fetch Rules from Firebase
-                const rulesRef = ref(db, 'admin_rules');
-                const snapshot = await get(rulesRef);
+            const growthStage = document.getElementById('growthStage').value;
+            const weatherName = document.getElementById('weather').value;
+            const treeCondition = document.getElementById('treeCondition').value;
+            const soilStillWet = document.getElementById('soilStillWet').checked;
+            const hasSoilAnalysis = document.getElementById('hasSoilAnalysis').checked;
 
-                if (snapshot.exists()) {
-                    const rules = snapshot.val();
-
-                    // Logic Example: 
-                    // Base Water = canopy * rules.base_water_per_sqm
-                    // Base Fert = age * rules.base_fert_per_year
-                    // Stage Multiplier applied to both
-
-                    const baseWater = (canopy * canopy) * (rules.base_water_per_sqm || 5);
-                    const baseFert = age * (rules.base_fert_per_year || 200);
-
-                    const stageMultiplier = rules.stage_multipliers ? (rules.stage_multipliers[stage] || 1) : 1;
-                    const pumpFlow = rules.pump_flow_rate || 10;
-
-                    const waterPerTree = Math.round(baseWater * stageMultiplier);
-                    const fertPerTree = Math.round(baseFert * stageMultiplier);
-
-                    const totalWaterLiters = waterPerTree * trees;
-                    const totalFertGrams = fertPerTree * trees;
-
-                    const waterMins = Math.ceil(totalWaterLiters / pumpFlow);
-                    const fertLiters = (totalFertGrams / 1000).toFixed(2);
-
-                    document.getElementById('water-result').innerHTML = `<b>ปริมาณน้ำรวม:</b> ${totalWaterLiters} ลิตร <br><span style="font-size:0.95rem; color:var(--text); opacity:0.8;">(${waterPerTree} ลิตร/ต้น)</span><br><span style="font-size:1rem; font-weight:600; color:var(--text);">⏱️ เวลาปั๊ม: ${waterMins} นาที</span>`;
-                    document.getElementById('fert-result').innerHTML = `<b>ปริมาณปุ๋ยรวม:</b> ${totalFertGrams} กรัม <br><span style="font-size:0.95rem; color:var(--text); opacity:0.8;">(${fertPerTree} กรัม/ต้น)</span><br><span style="font-size:1rem; font-weight:600; color:var(--text);">💧 จ่ายปุ๋ย: ${fertLiters} ลิตร</span>`;
-
-                    document.getElementById('calc-log').innerText = `อ้างอิงจาก Admin (Multiplier: ${stageMultiplier}, อัตราปั๊ม: ${pumpFlow} ลิตร/นาที)`;
-
-                    // Show modal and store values
-                    document.getElementById('calc-modal').classList.add('show');
-                    window.currentCalcResult = { waterMins, fertLiters };
-                } else {
-                    alert("ยังไม่มีการตั้งค่าจาก Admin ในระบบ Database");
+            if (hasSoilAnalysis) {
+                const sN = getNum('soilN'), sP = getNum('soilP'), sK = getNum('soilK');
+                if (sN === null || sN < 0 || sP === null || sP < 0 || sK === null || sK < 0) {
+                    showError("กรุณากรอกค่า N, P, K ผลวิเคราะห์ดินให้ถูกต้องมากกว่าหรือเท่ากับ 0");
+                    return;
                 }
-            } catch (error) {
-                console.error("Error fetching rules", error);
-                alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้");
             }
-        }
 
-        window.autoApply = function () {
-            if (window.currentCalcResult) {
-                const w = window.currentCalcResult.waterMins;
-                const f = window.currentCalcResult.fertLiters;
-                window.location.href = `schedule.html?water_mins=${w}&fert_liters=${f}`;
+            const rate = fertilizerRates[growthStage] || fertilizerRates["สร้างชุดใบ"];
+            const weatherRule = weatherRules[weatherName] || weatherRules["ปกติ"];
+            const checkedCrisis = Array.from(document.querySelectorAll('#crisisGroup input:checked')).map(cb => cb.value);
+
+            // Math Step 1: Canopy Area
+            const radius = diameter / 2;
+            const canopyArea = Math.PI * radius * radius;
+
+            // Math Step 2: Base Vol per Tree
+            const baseVolumePerTree = canopyArea * BASE_RATE_ML_PER_SQM;
+
+            // Math Step 3: Base Ratio Split
+            const totalRatio = rate.N + rate.P + rate.K;
+            const baseN = baseVolumePerTree * (rate.N / totalRatio);
+            const baseP = baseVolumePerTree * (rate.P / totalRatio);
+            const baseK = baseVolumePerTree * (rate.K / totalRatio);
+
+            // Math Step 4: Soil Assessment
+            let soilAssessment = { nutrientFactors: { N: 1, P: 1, K: 1 }, ecSafetyFactor: 1, details: [], warnings: [], stopReasons: [] };
+            if (hasSoilAnalysis) {
+                soilAssessment = assessSoil({
+                    n: getNum('soilN'), p: getNum('soilP'), k: getNum('soilK'),
+                    ph: getNum('soilPH'), om: getNum('soilOM'), ec: getNum('soilEC')
+                });
             }
+
+            const soilAdjustedN = baseN * soilAssessment.nutrientFactors.N;
+            const soilAdjustedP = baseP * soilAssessment.nutrientFactors.P;
+            const soilAdjustedK = baseK * soilAssessment.nutrientFactors.K;
+
+            // Math Step 5: Tree Condition
+            const treeAssessment = assessTreeCondition(treeCondition, checkedCrisis);
+
+            // Math Step 6: Root Safety & Weather
+            const wetSoilSafetyFactor = (weatherName === "หลังฝนตก" && soilStillWet) ? 0 : 1;
+            const rootSafetyFactor = Math.min(soilAssessment.ecSafetyFactor, wetSoilSafetyFactor);
+
+            // Math Step 7: Common Adjustment Factor
+            const commonFactor = weatherRule.factor * treeAssessment.factor * rootSafetyFactor;
+
+            // Math Step 8: Final Quantities
+            const finalN = soilAdjustedN * commonFactor;
+            const finalP = soilAdjustedP * commonFactor;
+            const finalK = soilAdjustedK * commonFactor;
+
+            const finalVolumePerTree = finalN + finalP + finalK;
+            const finalTotalVolume = finalVolumePerTree * treeCount;
+
+            const totalN = finalN * treeCount;
+            const totalP = finalP * treeCount;
+            const totalK = finalK * treeCount;
+
+            // Stop Evaluation
+            const stopReasons = [];
+            if (weatherRule.factor === 0) stopReasons.push(weatherRule.description);
+            if (weatherName === "หลังฝนตก" && soilStillWet) stopReasons.push("ดินยังแฉะ มีน้ำขัง หรือระบายน้ำไม่ทัน");
+            if (treeAssessment.factor === 0) stopReasons.push(treeAssessment.description);
+            soilAssessment.stopReasons.forEach(r => stopReasons.push(r));
+
+            const uniqueStopReasons = Array.from(new Set(stopReasons));
+            const isStop = commonFactor === 0 || uniqueStopReasons.length > 0;
+
+            // Render Output
+            const statusBadge = document.getElementById('statusBadge');
+            if (isStop) {
+                statusBadge.className = "badge-status stop";
+                statusBadge.innerHTML = "<span>⚠️</span> ระงับการจ่าย";
+            } else {
+                statusBadge.className = "badge-status normal";
+                statusBadge.innerHTML = "<span>✓</span> พร้อมใช้งาน";
+            }
+
+            let nPct = Math.round((rate.N / totalRatio) * 100);
+            let pPct = Math.round((rate.P / totalRatio) * 100);
+            let kPct = 100 - nPct - pPct;
+
+            const dateStr = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            let html = `
+                <!-- Official Print Report Header (Visible Only on Print) -->
+                <div class="print-only-block">
+                    <div class="print-header-doc">
+                        <div>
+                            <div class="print-header-title">🍃 ใบสรุปรายงานการประเมินและจ่ายปุ๋ยน้ำทุเรียน</div>
+                            <div class="print-header-sub">Smart Fertigation Assessment & Calculation Report</div>
+                        </div>
+                        <div class="print-header-meta">
+                            <div><strong>วันที่พิมพ์:</strong> ${dateStr} น.</div>
+                            <div><strong>ระบบ:</strong> Fertigation Engine v2.0</div>
+                        </div>
+                    </div>
+
+                    <!-- Input Parameters Table for Official Report -->
+                    <table class="print-param-table">
+                        <tr>
+                            <th>เส้นผ่านศูนย์กลางทรงพุ่ม</th>
+                            <td>${diameter.toFixed(1)} เมตร (${canopyArea.toFixed(1)} m²/ต้น)</td>
+                            <th>จำนวนต้นทุเรียน</th>
+                            <td>${treeCount.toLocaleString('th-TH')} ต้น</td>
+                        </tr>
+                        <tr>
+                            <th>ระยะการเจริญเติบโต</th>
+                            <td>${rate.label}</td>
+                            <th>สภาพอากาศ</th>
+                            <td>${weatherRule.description}</td>
+                        </tr>
+                        <tr>
+                            <th>สภาพต้นโดยรวม</th>
+                            <td>${treeAssessment.description}</td>
+                            <th>ผลวิเคราะห์ดิน</th>
+                            <td>${hasSoilAnalysis ? 'ระบุผลดิน (ปรับจูนแล้ว)' : 'ไม่ได้ระบุ (ค่ามาตรฐาน)'}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- N-P-K Target Hero Card -->
+                <div class="npk-hero-banner">
+                    <div class="npk-hero-top">
+                        <div class="npk-hero-label">
+                            <span>🎯</span> สัดส่วนธาตุอาหารเป้าหมาย (N-P-K Ratio)
+                        </div>
+                        <div class="npk-pill-badge">${rate.N} : ${rate.P} : ${rate.K}</div>
+                    </div>
+
+                    <div class="npk-stat-row">
+                        <div class="npk-stat-tile n">
+                            <div class="npk-tile-title"><span class="dot-tag dot-n"></span> N ไนโตรเจน</div>
+                            <div class="npk-tile-val">${rate.N}</div>
+                            <div class="npk-tile-sub">${nPct}% ของทั้งหมด</div>
+                        </div>
+                        <div class="npk-stat-tile p">
+                            <div class="npk-tile-title"><span class="dot-tag dot-p"></span> P ฟอสฟอรัส</div>
+                            <div class="npk-tile-val">${rate.P}</div>
+                            <div class="npk-tile-sub">${pPct}% ของทั้งหมด</div>
+                        </div>
+                        <div class="npk-stat-tile k">
+                            <div class="npk-tile-title"><span class="dot-tag dot-k"></span> K โพแทสเซียม</div>
+                            <div class="npk-tile-val">${rate.K}</div>
+                            <div class="npk-tile-sub">${kPct}% ของทั้งหมด</div>
+                        </div>
+                    </div>
+
+                    <div class="npk-bar-wrapper">
+                        <div class="npk-bar-seg npk-bar-n" style="width:${nPct}%;">N ${nPct}%</div>
+                        <div class="npk-bar-seg npk-bar-p" style="width:${pPct}%;">P ${pPct}%</div>
+                        <div class="npk-bar-seg npk-bar-k" style="width:${kPct}%;">K ${kPct}%</div>
+                    </div>
+                </div>
+            `;
+
+            if (isStop) {
+                html += `
+                    <div class="alert-stop-panel">
+                        <strong>⚠️ ระงับการจ่ายปุ๋ยชั่วคราว</strong>
+                        <div style="font-size: 0.85rem; margin-top: 0.25rem;">เนื่องจากพบเงื่อนไขที่ไม่ปลอดภัยต่อระบบรากหรือต้นทุเรียน:</div>
+                        <ul style="text-align: left; max-width: 450px; margin: 0.4rem auto 0 auto; padding-left: 1.25rem;">
+                            ${uniqueStopReasons.map(r => `<li>${r}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <!-- 4 Metric Overview Tiles -->
+                    <div class="metric-grid-4">
+                        <div class="metric-card accent">
+                            <div class="metric-icon">🧴</div>
+                            <div class="metric-val">${formatVolume(finalVolumePerTree)}</div>
+                            <div class="metric-label">ปุ๋ยน้ำรวมต่อต้น</div>
+                        </div>
+                        <div class="metric-card accent">
+                            <div class="metric-icon">🏞️</div>
+                            <div class="metric-val">${formatVolume(finalTotalVolume)}</div>
+                            <div class="metric-label">ปุ๋ยน้ำรวมทั้งแปลง (${treeCount.toLocaleString()} ต้น)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">📐</div>
+                            <div class="metric-val">${canopyArea.toFixed(1)} m²</div>
+                            <div class="metric-label">พื้นที่ทรงพุ่มต่อต้น</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">🌳</div>
+                            <div class="metric-val">${(canopyArea * treeCount).toFixed(0)} m²</div>
+                            <div class="metric-label">พื้นที่ทรงพุ่มรวมทั้งแปลง</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Breakdown Tiles per tree
+            html += `
+                <div style="font-size: 0.88rem; font-weight: 700; color: var(--primary); margin-bottom: 0.4rem;">
+                    🌿 ปริมาณปุ๋ยน้ำสุทธิแยกรายกลุ่มธาตุ (ต่อต้น & รวมทั้งแปลง)
+                </div>
+                <div class="breakdown-row">
+                    <div class="breakdown-box" style="border-top: 2.5px solid #16a34a;">
+                        <small>กลุ่ม N ไนโตรเจน</small>
+                        <strong style="color: #16a34a;">${isStop ? '0 mL' : formatVolume(finalN)}</strong>
+                        <small style="margin-top:1px;">รวม ${isStop ? '0 L' : formatVolume(totalN)}</small>
+                    </div>
+                    <div class="breakdown-box" style="border-top: 2.5px solid #d97706;">
+                        <small>กลุ่ม P ฟอสฟอรัส</small>
+                        <strong style="color: #d97706;">${isStop ? '0 mL' : formatVolume(finalP)}</strong>
+                        <small style="margin-top:1px;">รวม ${isStop ? '0 L' : formatVolume(totalP)}</small>
+                    </div>
+                    <div class="breakdown-box" style="border-top: 2.5px solid #2563eb;">
+                        <small>กลุ่ม K โพแทสเซียม</small>
+                        <strong style="color: #2563eb;">${isStop ? '0 mL' : formatVolume(finalK)}</strong>
+                        <small style="margin-top:1px;">รวม ${isStop ? '0 L' : formatVolume(totalK)}</small>
+                    </div>
+                </div>
+            `;
+
+            // Soil Lab Details & Advice
+            if (hasSoilAnalysis && soilAssessment.details.length > 0) {
+                html += `
+                    <div class="info-panel">
+                        <div class="info-panel-title">🧪 การปรับจูนตามผลวิเคราะห์ดิน:</div>
+                        <ul class="info-list">
+                            ${soilAssessment.details.map(d => `<li>${d}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            if (soilAssessment.warnings.length > 0 || treeAssessment.advice.length > 0) {
+                html += `
+                    <div class="info-panel" style="background: var(--amber-50); border-color: var(--amber-100);">
+                        <div class="info-panel-title" style="color: var(--amber-900);">⚠️ คำแนะนำข้อควรระวัง:</div>
+                        <ul class="info-list" style="color: var(--amber-900);">
+                            ${soilAssessment.warnings.map(w => `<li>${w}</li>`).join('')}
+                            ${treeAssessment.advice.map(a => `<li>${a}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            // Summary Information Box
+            html += `
+                <div class="info-panel">
+                    <div class="info-panel-title">📋 ข้อมูลประกอบการคำนวณ:</div>
+                    <ul class="info-list">
+                        <li><strong>ระยะพืช:</strong> ${rate.label} (สัดส่วน N:P:K = ${rate.N}:${rate.P}:${rate.K})</li>
+                        <li><strong>สภาพอากาศ:</strong> ${weatherRule.description}</li>
+                        <li><strong>สภาพต้น:</strong> ${treeAssessment.description}</li>
+                        <li><strong>ผลวิเคราะห์ดิน:</strong> ${hasSoilAnalysis ? 'นำมาประเมินและปรับจูนแล้ว' : 'ไม่ได้ระบุผลวิเคราะห์ดิน (ใช้สัดส่วนมาตรฐาน)'}</li>
+                    </ul>
+                </div>
+
+                <!-- Print Signature Footer (Visible Only on Print) -->
+                <div class="print-only-block">
+                    <div class="print-signature-row">
+                        <div class="print-sig-box">
+                            <div class="print-sig-line"></div>
+                            <div>ลงชื่อผู้ประเมิน / ผู้จัดการสวน</div>
+                        </div>
+                        <div class="print-sig-box">
+                            <div class="print-sig-line"></div>
+                            <div>ลงชื่อผู้อนุมัติการจ่ายปุ๋ยน้ำ</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-action-row">
+                    <button type="button" class="btn-outline-action" onclick="window.print()">
+                        🖨️ พิมพ์หรือบันทึกรายงาน PDF
+                    </button>
+                    <button type="button" class="btn-outline-action" onclick="resetCalcForm()" style="border-color: var(--slate-300); color: var(--slate-700);">
+                        🔄 เริ่มคำนวณใหม่
+                    </button>
+                </div>
+            `;
+
+            const resultBody = document.getElementById('resultBody');
+            const resultCard = document.getElementById('resultCard');
+
+            resultBody.innerHTML = html;
+            resultCard.classList.add('visible');
+
+            window.requestAnimationFrame(() => {
+                resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        };
+
+        function resetCalcForm() {
+            document.getElementById('calcForm').reset();
+            document.getElementById('resultCard').classList.remove('visible');
+            toggleWetSoilBox();
+            toggleSoilLabSection();
+            document.querySelectorAll('#crisisGroup .chip-item').forEach(el => el.classList.remove('active'));
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        window.closeModal = function () {
-            document.getElementById('calc-modal').classList.remove('show');
-        }
-
-        // Sidebar Toggle
-        window.toggleSidebar = function () {
-            document.getElementById('sidebar').classList.toggle('open');
-            document.getElementById('sidebar-overlay').classList.toggle('open');
-        }
+        // Init App On Load
+        document.addEventListener('DOMContentLoaded', () => {
+            toggleWetSoilBox();
+            toggleSoilLabSection();
+        });
     </script>
 </body>
-
 </html>
