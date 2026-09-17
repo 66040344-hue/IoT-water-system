@@ -1,18 +1,26 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>คำนวณและประเมินปุ๋ยน้ำทุเรียนอัจฉริยะ (Smart Fertigation Calculator)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
     <style>
+        /* --- Premium Emerald/Teal Glassmorphism Theme --- */
         :root {
-            --primary: #15803d;
-            --primary-dark: #166534;
-            --primary-light: #f0fdf4;
-            --primary-border: #bbf7d0;
-            --primary-ring: rgba(21, 128, 61, 0.15);
-            
+            --primary: #10b981;
+            /* Emerald 500 */
+            --primary-dark: #059669;
+            /* Emerald 600 */
+            --primary-light: #ecfdf5;
+            /* Emerald 50 */
+            --primary-border: #a7f3d0;
+            /* Emerald 200 */
+            --primary-ring: rgba(16, 185, 129, 0.25);
+
             --slate-50: #f8fafc;
             --slate-100: #f1f5f9;
             --slate-200: #e2e8f0;
@@ -20,28 +28,24 @@
             --slate-500: #64748b;
             --slate-700: #334155;
             --slate-900: #0f172a;
-            
+
             --amber-50: #fffbeb;
-            --amber-100: #fef3c7;
-            --amber-600: #d97706;
-            --amber-900: #78350f;
-
+            --amber-600: #f59e0b;
             --blue-50: #eff6ff;
-            --blue-100: #dbeafe;
-            --blue-600: #2563eb;
-
+            --blue-600: #3b82f6;
             --rose-50: #fff1f2;
             --rose-100: #ffe4e6;
             --rose-600: #e11d48;
             --rose-700: #be123c;
 
-            --radius-xl: 1.25rem;
-            --radius-lg: 0.85rem;
-            --radius-md: 0.6rem;
+            --radius-xl: 1.5rem;
+            --radius-lg: 1.15rem;
+            --radius-md: 0.75rem;
 
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
-            --shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
-            --shadow-lg: 0 8px 25px -4px rgba(21, 128, 61, 0.08);
+            --shadow-sm: 0 2px 8px -2px rgba(15, 23, 42, 0.05);
+            --shadow-md: 0 12px 32px -4px rgba(15, 23, 42, 0.08);
+            --shadow-lg: 0 20px 40px -8px rgba(16, 185, 129, 0.15);
+            --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.4);
         }
 
         * {
@@ -55,8 +59,9 @@
             -webkit-text-size-adjust: 100%;
         }
 
+        /* Dynamic Mesh Background */
         body {
-            background-color: var(--slate-50);
+            background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 50%, #ecfdf5 100%);
             color: var(--slate-900);
             font-family: 'Kanit', sans-serif;
             line-height: 1.5;
@@ -64,7 +69,9 @@
             min-height: 100vh;
         }
 
-        button, input, select {
+        button,
+        input,
+        select {
             font-family: inherit;
         }
 
@@ -73,88 +80,75 @@
             margin: 0 auto;
         }
 
-        /* Top Brand Header with Durian Farm Hero Image */
+        /* Top Brand Header with Glass Effect */
         .app-header {
-            background: linear-gradient(180deg, rgba(15, 23, 42, 0.45) 0%, rgba(15, 23, 42, 0.82) 100%), url('durian_farm_hero.png') center/cover no-repeat;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.65) 0%, rgba(5, 150, 105, 0.85) 100%), url('durian_farm_hero.png') center/cover no-repeat;
             border-radius: var(--radius-lg);
-            padding: 1rem 1.1rem;
+            padding: 1.25rem 1.1rem;
             color: #ffffff;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-            margin-bottom: 0.85rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            margin-bottom: 1.25rem;
             position: relative;
             overflow: hidden;
-            border: none;
+            border: 1px solid rgba(255, 255, 255, 0.15);
         }
 
         .header-content {
             display: flex;
             align-items: center;
-            gap: 0.85rem;
+            gap: 1rem;
             position: relative;
             z-index: 1;
         }
 
         .header-icon {
-            width: 44px;
-            height: 44px;
-            background: rgba(255, 255, 255, 0.22);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.35);
-            border-radius: 0.75rem;
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 1rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             flex-shrink: 0;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
         }
 
         .header-title {
-            font-size: 1.25rem;
+            font-size: 1.35rem;
             font-weight: 800;
             line-height: 1.25;
-            letter-spacing: -0.01em;
-            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
+            letter-spacing: -0.02em;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
         }
 
         .header-subtitle {
-            font-size: 0.8rem;
-            opacity: 0.95;
-            margin-top: 0.15rem;
-            font-weight: 400;
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-top: 0.25rem;
+            font-weight: 300;
             display: block;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
         }
 
-        .engine-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 0.2rem 0.65rem;
-            border-radius: 12px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            margin-top: 0.35rem;
-            color: #ffffff;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        }
-
-        /* Form Card */
+        /* Glassmorphism Form Card */
         .form-card {
-            background: #ffffff;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-radius: var(--radius-lg);
-            border: 1px solid var(--slate-200);
-            box-shadow: var(--shadow-sm);
-            padding: 1.1rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 1);
+            box-shadow: var(--shadow-md);
+            padding: 1.25rem 1.1rem;
         }
 
         .section-block {
-            margin-bottom: 1rem;
-            padding-bottom: 0.9rem;
-            border-bottom: 1px solid var(--slate-100);
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px dashed var(--slate-200);
+            transition: all 0.3s ease;
         }
 
         .section-block:last-child {
@@ -163,49 +157,55 @@
             border-bottom: none;
         }
 
+        .section-block:hover {
+            transform: translateX(2px);
+        }
+
         .block-header {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.6rem;
+            gap: 0.6rem;
+            margin-bottom: 0.85rem;
         }
 
+        /* Vibrant Gradient Badges */
         .block-num {
-            width: 24px;
-            height: 24px;
-            background: var(--primary-light);
-            color: var(--primary);
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #ffffff;
             font-weight: 800;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid var(--primary-border);
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
             flex-shrink: 0;
         }
 
         .block-title {
-            font-size: 0.98rem;
-            font-weight: 700;
+            font-size: 1.05rem;
+            font-weight: 800;
             color: var(--slate-900);
+            letter-spacing: -0.01em;
         }
 
-        /* Compact Grids */
+        /* Grids */
         .grid-2 {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
+            gap: 0.85rem;
         }
 
         .grid-3 {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 0.6rem;
+            gap: 0.85rem;
         }
 
         .form-group {
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
         }
 
         .form-group:last-child {
@@ -214,10 +214,10 @@
 
         .form-label {
             display: block;
-            font-size: 0.82rem;
+            font-size: 0.85rem;
             font-weight: 700;
             color: var(--slate-700);
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.4rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -227,22 +227,25 @@
             color: var(--rose-600);
         }
 
+        /* Modern Inputs */
         .input-wrapper {
             position: relative;
             display: flex;
             align-items: center;
         }
 
-        .form-input, .form-select {
+        .form-input,
+        .form-select {
             width: 100%;
-            height: 40px;
-            padding: 0 0.65rem;
-            background: var(--slate-50);
+            height: 46px;
+            padding: 0 0.85rem;
+            background: #ffffff;
             border: 1.5px solid var(--slate-200);
             border-radius: var(--radius-md);
-            font-size: 0.88rem;
+            font-size: 0.95rem;
             color: var(--slate-900);
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
         }
 
         .input-wrapper input {
@@ -252,172 +255,236 @@
 
         .input-tag {
             position: absolute;
-            right: 10px;
+            right: 12px;
             color: var(--slate-500);
-            font-size: 0.78rem;
-            font-weight: 600;
+            font-size: 0.8rem;
+            font-weight: 700;
             pointer-events: none;
         }
 
         .form-select {
             appearance: none;
             cursor: pointer;
-            padding-right: 2rem;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%252364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            padding-right: 2.5rem;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%252364748b' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 10px center;
+            background-position: right 12px center;
             background-size: 14px;
         }
 
-        .form-input:focus, .form-select:focus {
+        .form-input:focus,
+        .form-select:focus {
             outline: none;
-            background: #ffffff;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-ring);
+            box-shadow: 0 0 0 4px var(--primary-ring);
+            background: #ffffff;
         }
 
-        /* Preset Pills (Compact) */
+        /* Preset Pills */
         .preset-row {
             display: flex;
             align-items: center;
-            gap: 4px;
-            margin-top: 0.35rem;
+            gap: 6px;
+            margin-top: 0.5rem;
             flex-wrap: wrap;
         }
 
         .preset-tag {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             color: var(--slate-500);
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .btn-pill {
-            background: var(--slate-100);
+            background: #ffffff;
             color: var(--slate-700);
             border: 1px solid var(--slate-200);
-            border-radius: 12px;
-            padding: 0.15rem 0.5rem;
-            font-size: 0.72rem;
-            font-weight: 600;
+            border-radius: 20px;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-sm);
         }
 
-        .btn-pill:hover, .btn-pill.active {
+        .btn-pill:hover,
+        .btn-pill.active {
             background: var(--primary);
             color: #ffffff;
             border-color: var(--primary);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
         }
 
-        /* Checkbox Chips */
+        /* Interactive Chip Grid */
         .chip-grid {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 8px;
         }
 
         .chip-item {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 0.35rem 0.7rem;
-            background: var(--slate-50);
+            gap: 8px;
+            padding: 0.45rem 0.85rem;
+            background: #ffffff;
             border: 1.5px solid var(--slate-200);
-            border-radius: 20px;
-            font-size: 0.78rem;
-            font-weight: 600;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            font-weight: 700;
             color: var(--slate-700);
             cursor: pointer;
             user-select: none;
-            transition: all 0.2s ease;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-sm);
         }
 
         .chip-item input[type="checkbox"] {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             accent-color: var(--primary);
+        }
+
+        .chip-item:hover {
+            border-color: var(--primary-border);
+            transform: translateY(-1px);
         }
 
         .chip-item.active {
             background: var(--primary-light);
             border-color: var(--primary);
             color: var(--primary-dark);
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
         }
 
         /* Toggle Box Card */
         .toggle-box {
-            background: var(--primary-light);
-            border: 1.5px dashed var(--primary-border);
+            background: #ffffff;
+            border: 1.5px dashed var(--slate-300);
             border-radius: var(--radius-md);
-            padding: 0.75rem 0.85rem;
+            padding: 0.85rem 1rem;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-box:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
         }
 
         .toggle-box input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             accent-color: var(--primary);
         }
 
         .toggle-label strong {
             display: block;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
+            color: var(--slate-900);
+            transition: color 0.3s;
+        }
+
+        .toggle-box:hover .toggle-label strong {
             color: var(--primary-dark);
         }
 
         .toggle-label span {
             display: block;
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             color: var(--slate-500);
+            margin-top: 0.15rem;
         }
 
         .wet-soil-container {
             display: none;
-            margin-top: 0.6rem;
+            margin-top: 0.75rem;
         }
 
         .wet-soil-container.visible {
             display: block;
+            animation: fadeIn 0.4s ease;
         }
 
         .soil-lab-container {
             display: none;
-            margin-top: 0.75rem;
-            padding: 0.85rem;
-            background: #fafafa;
+            margin-top: 0.85rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.5);
             border: 1px dashed var(--slate-300);
             border-radius: var(--radius-md);
+            box-shadow: inner 0 2px 4px rgba(0, 0, 0, 0.02);
         }
 
         .soil-lab-container.visible {
             display: block;
+            animation: fadeIn 0.4s ease;
         }
 
-        /* Primary Action Button */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Stunning Primary Action Button */
         .btn-calc-submit {
             width: 100%;
-            height: 46px;
-            background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+            height: 54px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: #ffffff;
             border: none;
             border-radius: 999px;
-            font-size: 0.98rem;
+            font-size: 1.1rem;
             font-weight: 800;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
             cursor: pointer;
-            box-shadow: var(--shadow-md);
-            margin-top: 0.85rem;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+            margin-top: 1.25rem;
             touch-action: manipulation;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-calc-submit::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .btn-calc-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5);
+        }
+
+        .btn-calc-submit:hover::after {
+            left: 100%;
         }
 
         .btn-calc-submit:active {
             transform: translateY(1px);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
         }
 
         .error-banner {
@@ -425,29 +492,32 @@
             background: var(--rose-50);
             border: 1.5px solid var(--rose-100);
             color: var(--rose-700);
-            padding: 0.65rem 0.85rem;
+            padding: 0.85rem 1rem;
             border-radius: var(--radius-md);
-            font-size: 0.82rem;
-            font-weight: 600;
-            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-top: 1rem;
+            box-shadow: var(--shadow-sm);
         }
 
         .error-banner.visible {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            animation: fadeIn 0.3s;
         }
 
-        /* Output Section */
+        /* Output Section Redesign */
         .result-card {
             display: none;
-            background: #ffffff;
-            border-radius: var(--radius-lg);
-            border: 1.5px solid var(--slate-200);
-            box-shadow: var(--shadow-md);
-            padding: 1.1rem 1rem;
-            margin-top: 1rem;
-            animation: slideUp 0.3s ease forwards;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(16px);
+            border-radius: var(--radius-xl);
+            border: 1.5px solid var(--primary-border);
+            box-shadow: var(--shadow-lg);
+            padding: 1.25rem 1.1rem;
+            margin-top: 1.5rem;
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
 
         .result-card.visible {
@@ -455,40 +525,45 @@
         }
 
         @keyframes slideUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(25px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .result-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid var(--slate-100);
-            margin-bottom: 1rem;
+            padding-bottom: 0.85rem;
+            border-bottom: 1.5px dashed var(--slate-200);
+            margin-bottom: 1.25rem;
             gap: 0.5rem;
         }
 
         .result-title {
-            font-size: 1.05rem;
-            font-weight: 800;
+            font-size: 1.15rem;
+            font-weight: 900;
             color: var(--slate-900);
             display: flex;
             align-items: center;
-            gap: 6px;
-            line-height: 1.3;
+            gap: 8px;
         }
 
         .badge-status {
-            padding: 0.2rem 0.65rem;
-            border-radius: 16px;
-            font-size: 0.75rem;
-            font-weight: 700;
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 800;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-            white-space: nowrap;
+            gap: 6px;
+            box-shadow: var(--shadow-sm);
         }
 
         .badge-status.normal {
@@ -505,270 +580,580 @@
 
         /* Target N-P-K Card */
         .npk-hero-banner {
-            background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
             border: 1.5px solid var(--primary-border);
-            border-radius: var(--radius-md);
-            padding: 0.85rem;
-            margin-bottom: 1rem;
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.1);
         }
 
         .npk-hero-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
             gap: 0.5rem;
         }
 
         .npk-hero-label {
-            font-size: 0.88rem;
-            font-weight: 800;
+            font-size: 0.95rem;
+            font-weight: 900;
             color: var(--slate-900);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
 
         .npk-pill-badge {
-            font-size: 1.15rem;
+            font-size: 1.25rem;
             font-weight: 900;
-            background: var(--primary-dark);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: #ffffff;
-            padding: 0.25rem 0.85rem;
-            border-radius: 20px;
+            padding: 0.35rem 1rem;
+            border-radius: 25px;
             letter-spacing: 1px;
-            white-space: nowrap;
-            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
         }
 
         .npk-stat-row {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 0.75rem;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
         }
 
         .npk-stat-tile {
             background: #ffffff;
             border-radius: var(--radius-md);
-            padding: 0.6rem 0.3rem;
+            padding: 0.85rem 0.3rem;
             text-align: center;
             border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s;
+        }
+
+        .npk-stat-tile:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary-border);
         }
 
         .npk-tile-title {
-            font-size: 0.7rem;
-            font-weight: 700;
+            font-size: 0.75rem;
+            font-weight: 800;
             color: var(--slate-500);
-            margin-bottom: 0.1rem;
+            margin-bottom: 0.2rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 3px;
+            gap: 4px;
         }
 
-        .dot-tag { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-        .dot-n { background: var(--primary); }
-        .dot-p { background: var(--amber-600); }
-        .dot-k { background: var(--blue-600); }
+        .dot-tag {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot-n {
+            background: var(--primary);
+            box-shadow: 0 0 6px var(--primary);
+        }
+
+        .dot-p {
+            background: var(--amber-600);
+            box-shadow: 0 0 6px var(--amber-600);
+        }
+
+        .dot-k {
+            background: var(--blue-600);
+            box-shadow: 0 0 6px var(--blue-600);
+        }
 
         .npk-tile-val {
-            font-size: 1.35rem;
+            font-size: 1.6rem;
             font-weight: 900;
             line-height: 1.1;
+            margin: 0.25rem 0;
         }
 
-        .npk-stat-tile.n .npk-tile-val { color: var(--primary); }
-        .npk-stat-tile.p .npk-tile-val { color: var(--amber-600); }
-        .npk-stat-tile.k .npk-tile-val { color: var(--blue-600); }
+        .npk-stat-tile.n .npk-tile-val {
+            color: var(--primary);
+        }
+
+        .npk-stat-tile.p .npk-tile-val {
+            color: var(--amber-600);
+        }
+
+        .npk-stat-tile.k .npk-tile-val {
+            color: var(--blue-600);
+        }
 
         .npk-tile-sub {
-            font-size: 0.68rem;
-            font-weight: 600;
+            font-size: 0.75rem;
+            font-weight: 700;
             color: var(--slate-500);
         }
 
         .npk-bar-wrapper {
             display: flex;
-            height: 18px;
-            border-radius: 9px;
+            height: 22px;
+            border-radius: 11px;
             overflow: hidden;
             background: var(--slate-200);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .npk-bar-seg {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.7rem;
-            font-weight: 800;
+            font-size: 0.75rem;
+            font-weight: 900;
             color: #ffffff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
 
-        .npk-bar-n { background: linear-gradient(90deg, #16a34a, #15803d); }
-        .npk-bar-p { background: linear-gradient(90deg, #f59e0b, #d97706); }
-        .npk-bar-k { background: linear-gradient(90deg, #3b82f6, #2563eb); }
+        .npk-bar-n {
+            background: linear-gradient(90deg, #34d399, #10b981);
+        }
+
+        .npk-bar-p {
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
+        }
+
+        .npk-bar-k {
+            background: linear-gradient(90deg, #60a5fa, #3b82f6);
+        }
 
         /* Metric Grid 4 Cards */
         .metric-grid-4 {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
         }
 
         .metric-card {
-            background: var(--slate-50);
+            background: #ffffff;
             border-radius: var(--radius-md);
-            padding: 0.75rem 0.5rem;
+            padding: 1rem 0.5rem;
             text-align: center;
             border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .metric-card.accent {
-            background: var(--primary-light);
+            background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
             border-color: var(--primary-border);
         }
 
         .metric-icon {
-            font-size: 1.2rem;
-            margin-bottom: 0.15rem;
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
         }
 
         .metric-val {
-            font-size: 1.15rem;
-            font-weight: 800;
+            font-size: 1.25rem;
+            font-weight: 900;
             color: var(--slate-900);
             overflow-wrap: anywhere;
         }
 
         .metric-label {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             color: var(--slate-500);
-            font-weight: 600;
-            margin-top: 0.15rem;
+            font-weight: 700;
+            margin-top: 0.25rem;
         }
 
-        /* Breakdown Per Tree & Plot */
+        /* Breakdown Per Tree */
         .breakdown-row {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
         }
 
         .breakdown-box {
-            background: var(--slate-50);
+            background: #ffffff;
             border-radius: var(--radius-md);
-            padding: 0.6rem 0.3rem;
+            padding: 0.85rem 0.3rem;
             text-align: center;
             border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-sm);
         }
 
         .breakdown-box small {
             display: block;
-            font-size: 0.68rem;
+            font-size: 0.75rem;
+            font-weight: 700;
             color: var(--slate-500);
-            margin-bottom: 0.15rem;
+            margin-bottom: 0.25rem;
         }
 
         .breakdown-box strong {
             display: block;
-            font-size: 0.92rem;
-            font-weight: 800;
+            font-size: 1rem;
+            font-weight: 900;
+            color: var(--slate-900);
         }
 
         /* Advisory Notes & Details List */
         .info-panel {
-            background: var(--slate-50);
-            border-radius: var(--radius-md);
-            padding: 0.85rem;
-            border: 1px solid var(--slate-200);
-            margin-bottom: 0.85rem;
-            font-size: 0.8rem;
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            border: 1px dashed var(--slate-300);
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            box-shadow: var(--shadow-sm);
         }
 
         .info-panel-title {
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 0.4rem;
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: var(--primary-dark);
+            margin-bottom: 0.6rem;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
         }
 
         .info-list {
-            padding-left: 1rem;
+            padding-left: 1.2rem;
             color: var(--slate-700);
+            font-weight: 500;
         }
 
         .info-list li {
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.35rem;
         }
 
         .alert-stop-panel {
-            background: var(--rose-50);
+            background: linear-gradient(135deg, var(--rose-50) 0%, #ffffff 100%);
             border: 1.5px solid var(--rose-100);
-            border-radius: var(--radius-md);
-            padding: 0.85rem;
+            border-radius: var(--radius-lg);
+            padding: 1rem;
             color: var(--rose-700);
-            margin-bottom: 1rem;
+            margin-bottom: 1.25rem;
             text-align: center;
+            box-shadow: 0 4px 15px rgba(225, 29, 72, 0.1);
         }
 
         .alert-stop-panel strong {
-            font-size: 1.15rem;
+            font-size: 1.25rem;
+            font-weight: 900;
             display: block;
-            margin: 0.2rem 0;
+            margin: 0.25rem 0;
         }
 
         .btn-action-row {
             display: flex;
-            gap: 0.6rem;
-            margin-top: 1rem;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
         }
 
         .btn-outline-action {
             flex: 1;
-            height: 42px;
+            height: 48px;
             background: #ffffff;
-            border: 1.5px solid var(--primary);
+            border: 2px solid var(--primary);
             color: var(--primary-dark);
             border-radius: 999px;
-            font-weight: 700;
-            font-size: 0.82rem;
+            font-weight: 800;
+            font-size: 0.95rem;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 8px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-sm);
         }
 
-        /* Hidden Print Header & Footer for On-Screen View */
+        .btn-outline-action:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(16, 185, 129, 0.15);
+        }
+
         .print-only-block {
             display: none;
         }
 
-        /* Media Queries for Desktop enhancement */
-        @media (min-width: 641px) {
-            body { padding: 1.5rem 1rem 4rem 1rem; }
-            .app-header { padding: 1.5rem 2rem; border-radius: var(--radius-xl); margin-bottom: 1.5rem; }
-            .header-icon { width: 56px; height: 56px; font-size: 2rem; }
-            .header-title { font-size: 1.6rem; }
-            .header-subtitle { font-size: 0.88rem; }
-            .form-card { padding: 1.8rem; border-radius: var(--radius-xl); }
-            .block-title { font-size: 1.1rem; }
-            .form-label { font-size: 0.88rem; }
-            .form-input, .form-select { height: 46px; font-size: 0.95rem; }
-            .btn-calc-submit { height: 52px; font-size: 1.05rem; }
-            .metric-grid-4 { grid-template-columns: repeat(4, 1fr); gap: 1rem; }
-            .metric-card { padding: 1.1rem 0.85rem; }
-            .metric-val { font-size: 1.35rem; }
-            .npk-tile-val { font-size: 1.8rem; }
-            .breakdown-box strong { font-size: 1.05rem; }
+        /* Direct Action Modal Enhancements */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
         }
 
-        /* Official Print & PDF Report Styling */
+        .modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .action-modal {
+            background: #ffffff;
+            border-radius: var(--radius-xl);
+            padding: 2.25rem 2rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            transform: translateY(30px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--slate-200);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .modal-overlay.show .action-modal {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-title {
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: var(--slate-900);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-close {
+            background: var(--slate-100);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            cursor: pointer;
+            color: var(--slate-500);
+            transition: 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--rose-100);
+            color: var(--rose-600);
+            transform: rotate(90deg);
+        }
+
+        .modal-section {
+            margin-bottom: 1.25rem;
+        }
+
+        .modal-label {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--slate-900);
+            margin-bottom: 0.6rem;
+            display: block;
+        }
+
+        .radio-pills {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .radio-pill {
+            flex: 1;
+            text-align: center;
+            padding: 0.9rem;
+            border-radius: var(--radius-md);
+            border: 2px solid var(--slate-200);
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: var(--slate-500);
+            transition: all 0.25s;
+            background: #ffffff;
+            user-select: none;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .radio-pill input {
+            display: none;
+        }
+
+        .radio-pill:hover {
+            border-color: var(--primary-border);
+        }
+
+        .radio-pill.active {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary-dark);
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 0.85rem;
+            border-radius: var(--radius-md);
+            border: 2px solid var(--slate-200);
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 700;
+            box-sizing: border-box;
+            transition: 0.2s;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-ring);
+        }
+
+        .btn-confirm {
+            width: 100%;
+            padding: 1.15rem;
+            border: none;
+            border-radius: 999px;
+            font-size: 1.15rem;
+            font-weight: 900;
+            color: white;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+            margin-top: 15px;
+        }
+
+        .btn-confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5);
+        }
+
+        .metric-iot {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+        }
+
+        .metric-iot-card {
+            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+            border: 1.5px solid #bfdbfe;
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .metric-iot-card .val {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #1e3a8a;
+        }
+
+        .metric-iot-card .lbl {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #3b82f6;
+            margin-top: 0.25rem;
+        }
+
+        /* Media Queries */
+        @media (min-width: 641px) {
+            body {
+                padding: 1.5rem 1rem 4rem 1rem;
+            }
+
+            .app-header {
+                padding: 2rem;
+                border-radius: var(--radius-xl);
+                margin-bottom: 2rem;
+            }
+
+            .header-icon {
+                width: 64px;
+                height: 64px;
+                font-size: 2.25rem;
+                border-radius: 1.25rem;
+            }
+
+            .header-title {
+                font-size: 1.8rem;
+            }
+
+            .header-subtitle {
+                font-size: 0.95rem;
+                margin-top: 0.4rem;
+            }
+
+            .form-card {
+                padding: 2rem;
+                border-radius: var(--radius-xl);
+            }
+
+            .block-title {
+                font-size: 1.15rem;
+            }
+
+            .form-label {
+                font-size: 0.9rem;
+            }
+
+            .form-input,
+            .form-select {
+                height: 50px;
+                font-size: 1rem;
+            }
+
+            .btn-calc-submit {
+                height: 60px;
+                font-size: 1.2rem;
+            }
+
+            .metric-grid-4 {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 1rem;
+            }
+
+            .metric-card {
+                padding: 1.25rem 1rem;
+            }
+
+            .metric-val {
+                font-size: 1.5rem;
+            }
+
+            .npk-tile-val {
+                font-size: 2rem;
+            }
+
+            .breakdown-box strong {
+                font-size: 1.15rem;
+            }
+        }
+
+        /* Print Media */
         @media print {
             @page {
                 size: A4 portrait;
@@ -779,10 +1164,11 @@
                 padding: 0 !important;
                 background: #ffffff !important;
                 color: #000000 !important;
-                font-family: 'Kanit', sans-serif !important;
             }
 
-            .form-card, .btn-action-row, .app-header {
+            .form-card,
+            .btn-action-row,
+            .app-header {
                 display: none !important;
             }
 
@@ -799,7 +1185,7 @@
             }
 
             .print-header-doc {
-                border-bottom: 2px solid #15803d;
+                border-bottom: 2px solid #10b981;
                 padding-bottom: 12px;
                 margin-bottom: 16px;
                 display: flex;
@@ -807,67 +1193,10 @@
                 align-items: flex-end;
             }
 
-            .print-header-title {
-                font-size: 1.3rem;
-                font-weight: 800;
-                color: #15803d;
-                margin-bottom: 2px;
-            }
-
-            .print-header-sub {
-                font-size: 0.82rem;
-                color: #475569;
-            }
-
-            .print-header-meta {
-                font-size: 0.78rem;
-                text-align: right;
-                color: #475569;
-            }
-
-            .print-param-table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 16px;
-                font-size: 0.82rem;
-            }
-
-            .print-param-table th {
-                background: #f0fdf4;
-                color: #166534;
-                padding: 6px 10px;
-                border: 1px solid #cbd5e1;
-                text-align: left;
-                width: 25%;
-                font-weight: 700;
-            }
-
-            .print-param-table td {
-                padding: 6px 10px;
-                border: 1px solid #cbd5e1;
-                width: 25%;
-            }
-
-            .print-signature-row {
-                display: flex !important;
-                justify-content: space-between;
-                margin-top: 40px;
-                padding-top: 20px;
-            }
-
-            .print-sig-box {
-                text-align: center;
-                width: 42%;
-                font-size: 0.82rem;
-            }
-
-            .print-sig-line {
-                border-bottom: 1px dashed #64748b;
-                height: 35px;
-                margin-bottom: 8px;
-            }
-
-            .npk-hero-banner, .metric-card, .breakdown-box, .info-panel {
+            .npk-hero-banner,
+            .metric-card,
+            .breakdown-box,
+            .info-panel {
                 border: 1px solid #cbd5e1 !important;
                 box-shadow: none !important;
                 page-break-inside: avoid;
@@ -875,7 +1204,41 @@
         }
     </style>
 </head>
+
 <body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <button class="hamburger-btn" onclick="toggleSidebar()">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="logo">Water system control</div>
+        </div>
+        <div class="nav-links">
+            <!-- Legacy hidden by CSS -->
+        </div>
+    </nav>
+    <!-- Sidebar Menu -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo" style="font-size: 1.2rem;">Menu</div>
+            <button class="close-btn" onclick="toggleSidebar()">✕</button>
+        </div>
+        <div class="nav-links-sidebar">
+            <a href="index.html">ภาพรวม (Dashboard)</a>
+            <a href="control.html">ควบคุม (Control)</a>
+            <a href="calculator.html" class="active">คำนวณ (Calculator)</a>
+            <a href="schedule.html">ตั้งเวลา (Schedule)</a>
+            <a href="history.html">ประวัติ (History)</a>
+            <a href="admin.html">ตั้งค่าระบบ (Admin)</a>
+        </div>
+    </div>
+
     <div class="calc-app">
         <!-- Compact Header Banner -->
         <header class="app-header">
@@ -883,7 +1246,8 @@
                 <div class="header-icon">🍃</div>
                 <div>
                     <h1 class="header-title">ระบบคำนวณการให้ปุ๋ยทางน้ำ<br>สำหรับทุเรียน</h1>
-                    <span class="header-subtitle">ประเมินอัตราปุ๋ยน้ำตามพื้นที่ทรงพุ่ม ระยะพัฒนาการ สภาพอากาศ สภาพต้น และผลวิเคราะห์ดิน</span>
+                    <span class="header-subtitle">ประเมินอัตราปุ๋ยน้ำตามพื้นที่ทรงพุ่ม ระยะพัฒนาการ สภาพอากาศ สภาพต้น
+                        และผลวิเคราะห์ดิน</span>
                 </div>
             </div>
         </header>
@@ -891,7 +1255,7 @@
         <!-- Main Form Container -->
         <main class="main-grid">
             <form class="form-card" id="calcForm" onsubmit="event.preventDefault();">
-                
+
                 <!-- Section 1: Tree & Canopy Info (Compact Side-by-Side Grid) -->
                 <div class="section-block">
                     <div class="block-header">
@@ -905,15 +1269,20 @@
                                 เส้นผ่านศูนย์กลางทรงพุ่ม (ม.) <span class="req-star">*</span>
                             </label>
                             <div class="input-wrapper">
-                                <input type="number" id="canopyDiameter" class="form-input" value="8" min="0.1" step="0.1" placeholder="8.0">
+                                <input type="number" id="canopyDiameter" class="form-input" value="8" min="0.1"
+                                    step="0.1" placeholder="8.0">
                                 <span class="input-tag">เมตร</span>
                             </div>
                             <div class="preset-row">
                                 <span class="preset-tag">ตัวอย่าง:</span>
-                                <button type="button" class="btn-pill" onclick="setPreset('canopyDiameter', 4)">4m</button>
-                                <button type="button" class="btn-pill" onclick="setPreset('canopyDiameter', 6)">6m</button>
-                                <button type="button" class="btn-pill" onclick="setPreset('canopyDiameter', 8)">8m</button>
-                                <button type="button" class="btn-pill" onclick="setPreset('canopyDiameter', 10)">10m</button>
+                                <button type="button" class="btn-pill"
+                                    onclick="setPreset('canopyDiameter', 4)">4m</button>
+                                <button type="button" class="btn-pill"
+                                    onclick="setPreset('canopyDiameter', 6)">6m</button>
+                                <button type="button" class="btn-pill"
+                                    onclick="setPreset('canopyDiameter', 8)">8m</button>
+                                <button type="button" class="btn-pill"
+                                    onclick="setPreset('canopyDiameter', 10)">10m</button>
                             </div>
                         </div>
 
@@ -922,15 +1291,19 @@
                                 จำนวนต้นทุเรียน (ต้น) <span class="req-star">*</span>
                             </label>
                             <div class="input-wrapper">
-                                <input type="number" id="treeCount" class="form-input" value="10" min="1" step="1" placeholder="10">
+                                <input type="number" id="treeCount" class="form-input" value="10" min="1" step="1"
+                                    placeholder="10">
                                 <span class="input-tag">ต้น</span>
                             </div>
                             <div class="preset-row">
                                 <span class="preset-tag">ตัวอย่าง:</span>
                                 <button type="button" class="btn-pill" onclick="setPreset('treeCount', 5)">5ต้น</button>
-                                <button type="button" class="btn-pill" onclick="setPreset('treeCount', 10)">10ต้น</button>
-                                <button type="button" class="btn-pill" onclick="setPreset('treeCount', 25)">25ต้น</button>
-                                <button type="button" class="btn-pill" onclick="setPreset('treeCount', 50)">50ต้น</button>
+                                <button type="button" class="btn-pill"
+                                    onclick="setPreset('treeCount', 10)">10ต้น</button>
+                                <button type="button" class="btn-pill"
+                                    onclick="setPreset('treeCount', 25)">25ต้น</button>
+                                <button type="button" class="btn-pill"
+                                    onclick="setPreset('treeCount', 50)">50ต้น</button>
                             </div>
                         </div>
                     </div>
@@ -940,13 +1313,14 @@
                             ระยะการเจริญเติบโต / พัฒนาการทุเรียน <span class="req-star">*</span>
                         </label>
                         <select id="growthStage" class="form-select">
-                            <option value="สร้างชุดใบ">ระยะสร้างชุดใบ (เน้น N สูง อัตราส่วน 4 : 1 : 1)</option>
+                            <option value="สร้างชุดใบ">ระยะสร้างชุดใบ (ปกติ 3:1:1, ต้นโทรม 4:1:1)</option>
                             <option value="สะสมอาหาร">ระยะสะสมอาหาร (เน้น P, K สูง อัตราส่วน 1 : 5 : 5)</option>
                             <option value="พัฒนาดอกเดือน1">ระยะพัฒนาดอกเดือน 1 (อัตราส่วน 1 : 5 : 5)</option>
                             <option value="พัฒนาดอกเดือน2">ระยะพัฒนาดอกเดือน 2 (อัตราส่วน 1 : 1 : 1)</option>
                             <option value="ติดผลเล็ก">ระยะติดผลเล็ก เดือน 1–2 (อัตราส่วน 2 : 1 : 4)</option>
                             <option value="พัฒนาผล">ระยะพัฒนาผล เดือน 3 (ขยายผล อัตราส่วน 3 : 1 : 6)</option>
-                            <option value="ปรับปรุงคุณภาพ">ระยะปรับปรุงคุณภาพ เดือน 4 (สร้างความหวาน อัตราส่วน 1 : 2 : 8)</option>
+                            <option value="ปรับปรุงคุณภาพ">ระยะปรับปรุงคุณภาพ เดือน 4 (สร้างความหวาน อัตราส่วน 1 : 2 :
+                                8)</option>
                         </select>
                     </div>
                 </div>
@@ -992,6 +1366,7 @@
                         <label class="form-label" for="treeCondition">สภาพต้นโดยรวม</label>
                         <select id="treeCondition" class="form-select">
                             <option value="สมบูรณ์">ต้นสมบูรณ์ แข็งแรงตามปกติ</option>
+                            <option value="โทรม">ต้นโทรม สุขภาพไม่ดี (ต้องการฟื้นฟู)</option>
                             <option value="เฝ้าระวัง">พบความผิดปกติเล็กน้อย ต้องเฝ้าระวัง</option>
                             <option value="เครียดเล็กน้อย">ต้นมีอาการเครียดเล็กน้อย (ปรับลด 25%)</option>
                             <option value="เครียดปานกลาง">ต้นมีอาการเครียดปานกลาง (ปรับลด 50%)</option>
@@ -1037,31 +1412,45 @@
                     <div class="soil-lab-container" id="soilFields">
                         <div class="grid-3">
                             <div class="form-group">
+                                <label class="form-label" for="soilOM">OM (%) <span class="req-star">*</span></label>
+                                <input type="number" id="soilOM" class="form-input" min="0" step="0.1"
+                                    placeholder="เช่น 2.1" oninput="window.calculateSoilN()">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="soilCN">C:N Ratio <span class="req-star">*</span></label>
+                                <input type="number" id="soilCN" class="form-input" min="1" step="0.1"
+                                    placeholder="เช่น 9" oninput="window.calculateSoilN()">
+                            </div>
+                            <div class="form-group">
                                 <label class="form-label" for="soilN">N (mg/kg)</label>
-                                <input type="number" id="soilN" class="form-input" min="0" step="0.1" placeholder="เช่น 25">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="soilP">P (mg/kg)</label>
-                                <input type="number" id="soilP" class="form-input" min="0" step="0.1" placeholder="เช่น 35">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="soilK">K (mg/kg)</label>
-                                <input type="number" id="soilK" class="form-input" min="0" step="0.1" placeholder="เช่น 120">
+                                <input type="number" id="soilN" class="form-input" placeholder="อัตโนมัติ" readonly
+                                    style="background: var(--slate-100); color: var(--slate-500); cursor: not-allowed; border-style: dashed;">
                             </div>
                         </div>
 
-                        <div class="grid-3" style="margin-top: 0.5rem;">
+                        <div class="grid-2" style="margin-top: 0.5rem;">
                             <div class="form-group">
-                                <label class="form-label" for="soilPH">pH ดิน</label>
-                                <input type="number" id="soilPH" class="form-input" min="0" max="14" step="0.1" placeholder="5.5">
+                                <label class="form-label" for="soilP">P (mg/kg)</label>
+                                <input type="number" id="soilP" class="form-input" min="0" step="0.1"
+                                    placeholder="เช่น 35">
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="soilOM">OM (%)</label>
-                                <input type="number" id="soilOM" class="form-input" min="0" step="0.1" placeholder="2.5">
+                                <label class="form-label" for="soilK">K (mg/kg)</label>
+                                <input type="number" id="soilK" class="form-input" min="0" step="0.1"
+                                    placeholder="เช่น 120">
+                            </div>
+                        </div>
+
+                        <div class="grid-2" style="margin-top: 0.5rem;">
+                            <div class="form-group">
+                                <label class="form-label" for="soilPH">pH ดิน</label>
+                                <input type="number" id="soilPH" class="form-input" min="0" max="14" step="0.1"
+                                    placeholder="5.5">
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="soilEC">EC (dS/m)</label>
-                                <input type="number" id="soilEC" class="form-input" min="0" step="0.1" placeholder="0.8">
+                                <input type="number" id="soilEC" class="form-input" min="0" step="0.1"
+                                    placeholder="0.8">
                             </div>
                         </div>
                     </div>
@@ -1094,12 +1483,33 @@
     </div>
 
     <!-- Script Logic (Exact fertigation_test.html Calculations) -->
+
+    <!-- Firebase SDK & Logic -->
+    <script type="module" src="firebase_config.js"></script>
+    <script type="module">
+        import { db, ref, get, set } from './firebase_config.js';
+        window.db = db;
+        window.ref = ref;
+        window.get = get;
+        window.set = set;
+
+        // Load admin rules for IoT calculation
+        try {
+            get(ref(db, 'admin_rules')).then((snapshot) => {
+                if (snapshot.exists()) {
+                    window.loadedRules = snapshot.val();
+                }
+            });
+        } catch (e) { console.error("Firebase load err", e); }
+    </script>
     <script>
+
+
         "use strict";
 
         // Base Rates Dictionary (exact from fertigation_test.html)
         const fertilizerRates = {
-            "สร้างชุดใบ": { label: "ระยะสร้างชุดใบ", N: 4, P: 1, K: 1 },
+            "สร้างชุดใบ": { label: "ระยะสร้างชุดใบ", N: 3, P: 1, K: 1 },
             "สะสมอาหาร": { label: "ระยะสะสมอาหาร", N: 1, P: 5, K: 5 },
             "พัฒนาดอกเดือน1": { label: "ระยะพัฒนาดอกเดือน 1", N: 1, P: 5, K: 5 },
             "พัฒนาดอกเดือน2": { label: "ระยะพัฒนาดอกเดือน 2", N: 1, P: 1, K: 1 },
@@ -1126,6 +1536,7 @@
 
         const treeConditionRules = {
             "สมบูรณ์": { factor: 1, description: "ต้นสมบูรณ์ แข็งแรงตามปกติ" },
+            "โทรม": { factor: 1, description: "ต้นโทรม สุขภาพไม่ดี (เน้น N ฟื้นฟูสภาพต้น)" },
             "เฝ้าระวัง": { factor: 1, description: "พบความผิดปกติเล็กน้อย ควรติดตามอาการ" },
             "เครียดเล็กน้อย": { factor: 0.75, description: "ต้นมีอาการเครียดเล็กน้อย" },
             "เครียดปานกลาง": { factor: 0.50, description: "ต้นมีอาการเครียดปานกลาง" },
@@ -1148,7 +1559,7 @@
         }
 
         function toggleChip(input) {
-            if(input.checked) input.parentElement.classList.add('active');
+            if (input.checked) input.parentElement.classList.add('active');
             else input.parentElement.classList.remove('active');
         }
 
@@ -1266,7 +1677,7 @@
         }
 
         // Calculation Core Engine
-        window.runCalculation = function() {
+        window.runCalculation = function () {
             clearError();
 
             const diameter = getNum('canopyDiameter');
@@ -1290,12 +1701,17 @@
             if (hasSoilAnalysis) {
                 const sN = getNum('soilN'), sP = getNum('soilP'), sK = getNum('soilK');
                 if (sN === null || sN < 0 || sP === null || sP < 0 || sK === null || sK < 0) {
-                    showError("กรุณากรอกค่า N, P, K ผลวิเคราะห์ดินให้ถูกต้องมากกว่าหรือเท่ากับ 0");
+                    showError("กรุณากรอกค่า OM, C:N, P, K ในผลวิเคราะห์ดินให้ครบถ้วนและถูกต้อง");
                     return;
                 }
             }
 
-            const rate = fertilizerRates[growthStage] || fertilizerRates["สร้างชุดใบ"];
+            const rate = { ...(fertilizerRates[growthStage] || fertilizerRates["สร้างชุดใบ"]) };
+
+            // Dynamic rule for สร้างชุดใบ
+            if (growthStage === "สร้างชุดใบ" && treeCondition === "โทรม") {
+                rate.N = 4;
+            }
             const weatherRule = weatherRules[weatherName] || weatherRules["ปกติ"];
             const checkedCrisis = Array.from(document.querySelectorAll('#crisisGroup input:checked')).map(cb => cb.value);
 
@@ -1356,6 +1772,58 @@
 
             const uniqueStopReasons = Array.from(new Set(stopReasons));
             const isStop = commonFactor === 0 || uniqueStopReasons.length > 0;
+
+
+            // ---- IoT Calculation ----
+            let waterMins = 0;
+            let fertSecs = 0;
+            let selectedTankId = "tank1";
+            let tankName = "สูตรตามระยะพืช";
+
+            if (!isStop && window.loadedRules) {
+                const rules = window.loadedRules;
+                const efficiency = (rules.environment && rules.environment.irrigation_efficiency) ? rules.environment.irrigation_efficiency : 90;
+                const baseWaterConfig = rules.base_water_per_sqm || 5;
+                let waterPerTree = canopyArea * baseWaterConfig * (100 / efficiency) * commonFactor;
+                let totalWaterLiters = waterPerTree * treeCount;
+
+                const pumpFlowHR = (rules.hardware && rules.hardware.pump_flow_rate) ? rules.hardware.pump_flow_rate : 3600;
+                const pumpFlow = pumpFlowHR / 60; // L/min
+
+                const spFlowHR = (rules.sprinkler && rules.sprinkler.flow_rate) ? rules.sprinkler.flow_rate : 0;
+                const spFlow = spFlowHR / 60;
+                let spTotal = (rules.sprinkler && rules.sprinkler.total) ? rules.sprinkler.total : 0;
+                let spPerTree = (rules.sprinkler && rules.sprinkler.per_tree) ? rules.sprinkler.per_tree : 0;
+                if (spPerTree && !spTotal) spTotal = spPerTree * treeCount;
+
+                if (spFlow > 0 && spTotal > 0) {
+                    waterMins = Math.ceil(totalWaterLiters / (spFlow * spTotal));
+                } else {
+                    waterMins = Math.ceil(totalWaterLiters / pumpFlow);
+                }
+
+                const fertFlow = (rules.hardware && rules.hardware.fert_flow_rate) ? rules.hardware.fert_flow_rate : 200;
+                const fertFlowMlPerSec = (fertFlow * 1000) / 3600;
+                fertSecs = Math.ceil(finalTotalVolume / fertFlowMlPerSec);
+
+                // AI Tank Recommendation
+                let minDist = 9999;
+                if (rules.tanks) {
+                    const tankArr = Array.isArray(rules.tanks) ? rules.tanks : Object.values(rules.tanks);
+                    tankArr.forEach((tank) => {
+                        if (tank && tank.name) {
+                            const dist = Math.sqrt(Math.pow(rate.N - tank.n, 2) + Math.pow(rate.P - tank.p, 2) + Math.pow(rate.K - tank.k, 2));
+                            if (dist < minDist) {
+                                minDist = dist;
+                                selectedTankId = tank.id;
+                                tankName = tank.name;
+                            }
+                        }
+                    });
+                }
+
+                window.currentCalcResult = { waterMins, fertSecs, tankId: selectedTankId };
+            }
 
             // Render Output
             const statusBadge = document.getElementById('statusBadge');
@@ -1578,7 +2046,82 @@
             });
         };
 
+
+        window.autoApply = function () {
+            if (!window.currentCalcResult) {
+                alert("ระบบยังไม่ได้เชื่อมต่อกับข้อมูลอุปกรณ์ IoT");
+                return;
+            }
+            document.getElementById('actionModal').classList.add('show');
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 5);
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('modal_datetime').value = now.toISOString().slice(0, 16);
+        };
+
+        window.closeActionModal = function () {
+            document.getElementById('actionModal').classList.remove('show');
+        };
+
+        window.toggleTimeMode = function (mode) {
+            document.getElementById('pill_now').classList.toggle('active', mode === 'now');
+            document.getElementById('pill_later').classList.toggle('active', mode === 'later');
+            document.getElementById('datetime_section').style.display = (mode === 'later') ? 'block' : 'none';
+        };
+
+        window.submitDirectSchedule = async function () {
+            if (!window.currentCalcResult || !window.set) return;
+            const w = window.currentCalcResult.waterMins;
+            const f = window.currentCalcResult.fertSecs;
+            const t = window.currentCalcResult.tankId;
+
+            const isZone1 = document.getElementById('modal_zone1').checked;
+            const isZone2 = document.getElementById('modal_zone2').checked;
+            const mode = document.querySelector('input[name="time_mode"]:checked').value;
+
+            if (!isZone1 && !isZone2) {
+                alert('กรุณาเลือกอย่างน้อย 1 โซน');
+                return;
+            }
+
+            let startUnix = Math.floor(Date.now() / 1000);
+            if (mode === 'later') {
+                const dtVal = document.getElementById('modal_datetime').value;
+                if (!dtVal) {
+                    alert('กรุณาระบุวัน-เวลา');
+                    return;
+                }
+                startUnix = Math.floor(new Date(dtVal).getTime() / 1000);
+            }
+
+            const jobData = {
+                id: "sched_" + Date.now(),
+                water_mins: w,
+                fert_secs: f,
+                tank_id: t,
+                zone1: isZone1,
+                zone2: isZone2,
+                start_time: startUnix,
+                status: 'pending',
+                created_at: Math.floor(Date.now() / 1000)
+            };
+
+            try {
+                if (mode === 'now') {
+                    await window.set(window.ref(window.db, 'current_job'), jobData);
+                    alert('⚡ ระบบได้ส่งคำสั่งให้ ESP32 ทำงานทันทีเรียบร้อยแล้ว!');
+                } else {
+                    await window.set(window.ref(window.db, 'schedules/' + jobData.id), jobData);
+                    alert('⏱️ ระบบได้บันทึกคิวตั้งเวลาล่วงหน้าเรียบร้อยแล้ว!');
+                }
+                window.closeActionModal();
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + err.message);
+            }
+        };
+
         function resetCalcForm() {
+
             document.getElementById('calcForm').reset();
             document.getElementById('resultCard').classList.remove('visible');
             toggleWetSoilBox();
@@ -1587,11 +2130,87 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (sidebar) sidebar.classList.toggle('open');
+            if (overlay) overlay.classList.toggle('show');
+        }
+
         // Init App On Load
         document.addEventListener('DOMContentLoaded', () => {
             toggleWetSoilBox();
             toggleSoilLabSection();
         });
+
+        window.calculateSoilN = function () {
+            const omEl = document.getElementById('soilOM');
+            const cnEl = document.getElementById('soilCN');
+            const nEl = document.getElementById('soilN');
+
+            if (omEl && cnEl && nEl) {
+                const om = parseFloat(omEl.value);
+                const cn = parseFloat(cnEl.value);
+
+                if (!isNaN(om) && !isNaN(cn) && cn > 0) {
+                    const oc = om * 0.58;
+                    const pctN = oc / cn;
+                    const n_mg_kg = pctN * 10000;
+                    nEl.value = Math.round(n_mg_kg);
+                } else {
+                    nEl.value = "";
+                }
+            }
+        };
+
     </script>
+
+    <!-- Direct Action Modal -->
+    <div class="modal-overlay" id="actionModal">
+        <div class="action-modal">
+            <div class="modal-title">
+                <span>🚀 สั่งงานและตั้งเวลา</span>
+                <button class="modal-close" onclick="window.closeActionModal()">✕</button>
+            </div>
+
+            <div class="modal-section">
+                <span class="modal-label">📍 เลือกโซนพื้นที่รดน้ำ</span>
+                <div style="display: flex; gap: 15px;">
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="modal_zone1" checked
+                            style="width: 18px; height: 18px; accent-color: var(--primary);"> โซน 1
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="modal_zone2"
+                            style="width: 18px; height: 18px; accent-color: var(--primary);"> โซน 2
+                    </label>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <span class="modal-label">🕒 รูปแบบการสั่งงาน</span>
+                <div class="radio-pills">
+                    <label class="radio-pill active" id="pill_now" onclick="window.toggleTimeMode('now')">
+                        <input type="radio" name="time_mode" value="now" checked> ⚡ ทำทันที
+                    </label>
+                    <label class="radio-pill" id="pill_later" onclick="window.toggleTimeMode('later')">
+                        <input type="radio" name="time_mode" value="later"> ⏱️ ตั้งเวลาล่วงหน้า
+                    </label>
+                </div>
+            </div>
+
+            <div class="modal-section" id="datetime_section" style="display: none;">
+                <span class="modal-label">📅 เลือกวัน-เวลาที่ต้องการให้เริ่ม</span>
+                <input type="datetime-local" id="modal_datetime" class="modal-input">
+            </div>
+
+            <button class="btn-confirm" onclick="window.submitDirectSchedule()">
+                ยืนยันการสั่งงาน
+            </button>
+        </div>
+    </div>
+
 </body>
+
 </html>
