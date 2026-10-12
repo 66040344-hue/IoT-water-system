@@ -1,0 +1,277 @@
+// หน้าคำนวณ: รับค่าจากฟอร์ม -> XF.calcFertigation -> แสดงผล และส่งค่าไปตั้งให้โซน
+XF.boot("calc", function () {
+  const { store, $, $$, esc, fmt, num } = XF;
+  let down = {};
+  let result = null;
+  let treeCount = 0;
+  let ranked = []; // สูตรปุ๋ยเรียงจากใกล้เป้าหมายที่สุด
+  let selectedProduct = ""; // สูตรที่ผู้ใช้เลือก (เริ่มจากสูตรที่แนะนำ)
+
+  const tanksHolding = (productId) => {
+    const tanks = (down.settings || {}).tanks || {};
+    return [1, 2, 3].filter((i) => (tanks["t" + i] || {}).product === productId);
+  };
+  const tankLabel = (i) => (((down.settings || {}).tanks || {})["t" + i] || {}).name || "ถัง " + i;
+
+  // การ์ดสูตรปุ๋ยที่เลือก + ตารางรูปให้เลือกสูตรอื่น
+  function renderProductPicker() {
+    const box = $("#productPicker");
+    if (!box) return;
+    const chosen = ranked.find((p) => p.id === selectedProduct);
+    const held = tanksHolding(chosen.id);
+    const isBest = chosen.id === ranked[0].id;
+    box.innerHTML = `
+      <div class="reco">
+        <img src="${XF.productImage(chosen.id)}" alt="">
+        <div>
+          <span class="badge ${isBest ? "on" : "warn"}">${isBest ? "สูตรที่แนะนำ" : "สูตรที่เลือกเอง"}</span>
+          <div class="reco-name">${esc(chosen.name)}</div>
+          <div class="small muted">N-P-K ${chosen.n}-${chosen.p}-${chosen.k}${isBest ? " · สัดส่วนใกล้เป้าหมายที่สุด" : ""}</div>
+          <div class="small" style="margin-top:4px">${
+            held.length
+              ? `<span style="color:var(--green-dark)">มีอยู่ใน${held.map((i) => esc(tankLabel(i))).join(", ")}</span>`
+              : '<span style="color:#b25a00">ยังไม่มีในถังปุ๋ย ต้องเติมลงถังก่อนใช้</span>'
+          }</div>
+        </div>
+      </div>
+      <div class="small muted" style="margin:12px 0 6px">เลือกสูตรอื่นได้ (เรียงจากใกล้เป้าหมายที่สุด)</div>
+      <div class="product-grid">${ranked
+        .map(
+          (p, i) => `<button type="button" class="product ${p.id === selectedProduct ? "active" : ""}" data-product="${p.id}" aria-pressed="${p.id === selectedProduct}">
+            <img src="${XF.productImage(p.id)}" alt="" loading="lazy">${esc(p.name)}
+            ${i === 0 ? '<span class="product-flag">แนะนำ</span>' : ""}${tanksHolding(p.id).length ? '<span class="product-tank">ในถัง</span>' : ""}</button>`
+        )
+        .join("")}</div>`;
+    $$("[data-product]", box).forEach((btn) =>
+      btn.addEventListener("click", () => {
+        selectedProduct = btn.dataset.product;
+        renderProductPicker();
+      })
+    );
+  }
+
+  const value = (id) => {
+    const v = parseFloat($("#" + id).value);
+    return Number.isFinite(v) ? v : null;
+  };
+
+  function showError(message) {
+    const box = $("#errorBox");
+    box.textContent = message;
+    box.hidden = !message;
+    if (message) box.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // ---- ตัวช่วยของฟอร์ม
+  $$("[data-preset] .chip").forEach((chip) =>
+    chip.addEventListener("click", () => ($("#" + chip.parentElement.dataset.preset).value = chip.dataset.v))
+  );
+  $$("#crisisGroup .chip").forEach((chip) => chip.addEventListener("click", () => chip.classList.toggle("active")));
+  $("#weather").addEventListener("change", () => {
+    const afterRain = $("#weather").value === "หลังฝนตก";
+    $("#wetSoilBox").hidden = !afterRain;
+    if (!afterRain) $("#soilStillWet").checked = false;
+  });
+  $("#hasSoilAnalysis").addEventListener("change", () => ($("#soilFields").hidden = !$("#hasSoilAnalysis").checked));
+  ["soilOM", "soilCN"].forEach((id) =>
+    $("#" + id).addEventListener("input", () => {
+      const n = XF.soilNFromOM(value("soilOM"), value("soilCN"));
+      $("#soilN").value = n == null ? "" : n;
+    })
+  );
+
+  function renderZonePresets() {
+    $("#zonePresets").innerHTML = XF.sortedZones(down.zones)
+      .map((z) => `<button type="button" class="chip" data-trees="${num(z.trees)}">${esc(z.name)} ${fmt(z.trees)} ต้น</button>`)
+      .join("");
+    $$("#zonePresets .chip").forEach((chip) => chip.addEventListener("click", () => ($("#treeCount").value = chip.dataset.trees)));
+  }
+
+  // ---- คำนวณ
+  function calculate() {
+    showError("");
+    const diameter = value("canopyDiameter");
+    treeCount = value("treeCount");
+    if (diameter === null || diameter <= 0) return showError("กรุณากรอกเส้นผ่านศูนย์กลางทรงพุ่มให้มากกว่า 0 เมตร");
+    if (treeCount === null || treeCount < 1 || !Number.isInteger(treeCount)) return showError("กรุณากรอกจำนวนต้นเป็นจำนวนเต็มอย่างน้อย 1 ต้น");
+
+    let soil = null;
+    if ($("#hasSoilAnalysis").checked) {
+      soil = { n: value("soilN"), p: value("soilP"), k: value("soilK"), ph: value("soilPH"), om: value("soilOM"), ec: value("soilEC") };
+      if ([soil.n, soil.p, soil.k].some((v) => v === null || v < 0)) {
+        return showError("กรุณากรอกค่า OM, C:N, P, K ในผลวิเคราะห์ดินให้ครบถ้วนและถูกต้อง");
+      }
+    }
+
+    const settings = down.settings || {};
+    result = XF.calcFertigation({
+      diameter,
+      treeCount,
+      growthStage: $("#growthStage").value,
+      weather: $("#weather").value,
+      soilStillWet: $("#soilStillWet").checked,
+      treeCondition: $("#treeCondition").value,
+      crisis: $$("#crisisGroup .chip.active").map((c) => c.dataset.crisis),
+      soil,
+      baseWaterPerSqm: num(settings.base_water_per_sqm, 5),
+      irrigationEfficiency: num(settings.irrigation_efficiency, 90),
+    });
+    // แนะนำจากสูตรปุ๋ยทั้งหมดในรายการ โดยไม่ขึ้นกับว่าตอนนี้มีอยู่ในถังหรือไม่
+    ranked = XF.rankProducts(result.rate, XF.FERT_PRODUCTS);
+    selectedProduct = ranked[0].id;
+    renderResult(soil !== null);
+  }
+
+  function renderResult(hasSoil) {
+    const r = result;
+    const rate = r.rate;
+    const nPct = Math.round((rate.N / r.totalRatio) * 100);
+    const pPct = Math.round((rate.P / r.totalRatio) * 100);
+    const kPct = 100 - nPct - pPct;
+    const vol = (ml) => (r.isStop ? "0 มล." : XF.fmtVolume(ml));
+    const list = (items) => `<ul style="padding-left:1.2rem">${items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`;
+    const group = (label, color, ml) =>
+      `<div class="card" style="border-top:3px solid ${color};text-align:center;padding:12px 6px"><div class="small muted">${label}</div>
+        <b style="color:${color}">${vol(ml)}</b><div class="small muted">รวม ${vol(ml * treeCount)}</div></div>`;
+
+    let html = `
+      <div class="row between wrap" style="margin-bottom:12px">
+        <div class="card-title" style="margin:0">สรุปผลคำนวณและอัตราจ่ายปุ๋ยน้ำ</div>
+        <span class="badge ${r.isStop ? "" : "on"}">${r.isStop ? "ระงับการจ่าย" : "พร้อมใช้งาน"}</span>
+      </div>
+      <div class="small muted">พิมพ์เมื่อ ${XF.fmtDate(Date.now())} ${XF.fmtTime(Date.now())} น. · ทรงพุ่ม ${fmt($("#canopyDiameter").value, 1)} ม. · ${fmt(treeCount)} ต้น</div>
+
+      <div class="row between" style="margin:14px 0 8px"><b>สัดส่วนธาตุอาหารเป้าหมาย (N : P : K)</b>
+        <span class="badge on" style="font-size:1rem">${rate.N} : ${rate.P} : ${rate.K}</span></div>
+      <div class="npk-bar"><div class="npk-n" style="width:${nPct}%">N ${nPct}%</div><div class="npk-p" style="width:${pPct}%">P ${pPct}%</div><div class="npk-k" style="width:${kPct}%">K ${kPct}%</div></div>`;
+
+    if (r.isStop) {
+      html += `<div class="notice red" style="margin-top:14px"><b>ระงับการจ่ายปุ๋ยชั่วคราว</b>
+        <div>เนื่องจากพบเงื่อนไขที่ไม่ปลอดภัยต่อระบบรากหรือต้นทุเรียน:</div>${list(r.stopReasons)}</div>`;
+    } else {
+      html += `<div class="grid cols-2" style="margin-top:14px">
+          <div class="card"><div class="stat-label">ปุ๋ยน้ำรวมต่อต้น</div><div class="num" style="font-size:1.6rem;color:var(--orange)">${XF.fmtVolume(r.fertPerTreeMl)}</div></div>
+          <div class="card"><div class="stat-label">ปุ๋ยน้ำรวมทั้งแปลง (${fmt(treeCount)} ต้น)</div><div class="num" style="font-size:1.6rem;color:var(--orange)">${XF.fmtVolume(r.fertTotalMl)}</div></div>
+          <div class="card"><div class="stat-label">น้ำต่อต้น</div><div class="num" style="font-size:1.6rem;color:var(--blue)">${fmt(r.waterPerTreeL, 0)}<small>ลิตร</small></div></div>
+          <div class="card"><div class="stat-label">พื้นที่ทรงพุ่มต่อต้น / รวม</div><div class="num" style="font-size:1.6rem">${fmt(r.canopyArea, 1)}<small>m²</small></div>
+            <div class="small muted">รวม ${fmt(r.canopyArea * treeCount, 0)} m²</div></div>
+        </div>`;
+    }
+
+    html += `<div style="margin:16px 0 8px"><b>ปริมาณปุ๋ยน้ำสุทธิแยกกลุ่มธาตุ (ต่อต้น และรวมทั้งแปลง)</b></div>
+      <div class="grid cols-3">${group("กลุ่ม N ไนโตรเจน", "var(--green-dark)", r.perTree.N)}${group("กลุ่ม P ฟอสฟอรัส", "#c96a10", r.perTree.P)}${group("กลุ่ม K โพแทสเซียม", "var(--blue)", r.perTree.K)}</div>`;
+
+    if (!r.isStop) {
+      html += `<div style="margin:16px 0 8px"><b>ปุ๋ยที่ควรใช้</b></div><div id="productPicker"></div>`;
+    }
+    if (hasSoil && r.soilDetails.length) html += `<div style="margin-top:14px"><b>การปรับตามผลวิเคราะห์ดิน</b>${list(r.soilDetails)}</div>`;
+    if (r.soilWarnings.length || r.advice.length) {
+      html += `<div class="notice" style="margin-top:14px"><b>คำแนะนำและข้อควรระวัง</b>${list([...r.soilWarnings, ...r.advice])}</div>`;
+    }
+    html += `<div style="margin-top:14px"><b>ข้อมูลประกอบการคำนวณ</b>${list([
+      `ระยะพืช: ${rate.label} (N:P:K = ${rate.N}:${rate.P}:${rate.K})`,
+      `สภาพอากาศ: ${r.weatherDescription}`,
+      `สภาพต้น: ${r.treeDescription}`,
+      `ผลวิเคราะห์ดิน: ${hasSoil ? "นำมาประเมินและปรับแล้ว" : "ไม่ได้ระบุ (ใช้สัดส่วนมาตรฐาน)"}`,
+    ])}</div>
+      <div class="row wrap no-print" style="margin-top:16px">
+        <button class="btn" id="applyBtn" style="flex:2;min-width:220px" ${r.isStop ? "disabled" : ""}>นำผลคำนวณไปตั้งค่าให้โซน</button>
+        <button class="btn ghost" id="printBtn" style="flex:1">พิมพ์รายงาน</button>
+        <button class="btn ghost" id="resetBtn" style="flex:1">คำนวณใหม่</button>
+      </div>`;
+
+    const card = $("#resultCard");
+    card.innerHTML = html;
+    card.hidden = false;
+    renderProductPicker();
+    $("#applyBtn").addEventListener("click", openApply);
+    $("#printBtn").addEventListener("click", () => window.print());
+    $("#resetBtn").addEventListener("click", () => {
+      $("#calcForm").reset();
+      $$("#crisisGroup .chip").forEach((c) => c.classList.remove("active"));
+      $("#wetSoilBox").hidden = true;
+      $("#soilFields").hidden = true;
+      card.hidden = true;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // ---- ส่งค่าไปตั้งให้โซน (ปริมาณต่อต้น + ถังปุ๋ย) แล้วใช้กับหน้าควบคุมและตารางเวลา
+  function openApply() {
+    const zones = XF.sortedZones(down.zones);
+    const tanks = (down.settings || {}).tanks || {};
+    const water = Math.round(result.waterPerTreeL);
+    const fert = Math.round(result.fertPerTreeMl);
+    const product = ranked.find((p) => p.id === selectedProduct);
+    const held = tanksHolding(product.id);
+    let tank = held[0] || 1;
+
+    const modal = XF.modal(`
+      <h2>ตั้งค่าให้โซน</h2>
+      <p class="muted small" style="margin-bottom:12px">บันทึก น้ำ <b>${fmt(water)} ลิตร/ต้น</b> และปุ๋ย <b>${fmt(fert)} มล./ต้น</b> เป็นค่าของโซนที่เลือก</p>
+      <div class="grid">${zones
+        .map(
+          (z) => `<label class="check-row"><input type="checkbox" value="${esc(z.id)}" checked>
+            <span><b>${esc(z.name)}</b><br><span class="small muted">${fmt(z.trees)} ต้น · ${z.fert_enabled === false ? "ให้น้ำอย่างเดียว" : "ให้น้ำและปุ๋ย"}</span></span></label>`
+        )
+        .join("")}</div>
+      <div class="reco" style="margin-top:14px"><img src="${XF.productImage(product.id)}" alt="">
+        <div><div class="small muted">ปุ๋ยที่เลือก</div><div class="reco-name">${esc(product.name)}</div></div></div>
+      <div class="field" style="margin-top:12px"><span>จ่ายจากถังไหน</span>
+        <div class="tank-opts" role="radiogroup" aria-label="ถังปุ๋ย">${[1, 2, 3]
+          .map((i) => {
+            const t = tanks["t" + i] || {};
+            const picture = t.product ? `<img src="${XF.productImage(t.product)}" alt="">` : `<div class="tank-noimg">T${i}</div>`;
+            return `<button type="button" class="tank-opt" role="radio" data-tank="${i}">${picture}<b>${esc(tankLabel(i))}</b>
+              <span>${fmt(XF.num(t.n))}-${fmt(XF.num(t.p))}-${fmt(XF.num(t.k))}</span></button>`;
+          })
+          .join("")}</div></div>
+      <div id="applyNote" style="margin-top:10px"></div>
+      <div class="form-actions"><button class="btn ghost" data-close>ยกเลิก</button><button class="btn" id="applyConfirm">บันทึกและไปหน้าควบคุม</button></div>`);
+
+    const tankMatches = () => (tanks["t" + tank] || {}).product === product.id;
+    function refreshTank() {
+      $$(".tank-opt", modal.el).forEach((b) => {
+        const active = +b.dataset.tank === tank;
+        b.classList.toggle("active", active);
+        b.setAttribute("aria-checked", active);
+      });
+      $("#applyNote", modal.el).innerHTML = tankMatches()
+        ? `<div class="notice green">${esc(tankLabel(tank))} ใส่ ${esc(product.name)} อยู่แล้ว</div>`
+        : `<div class="notice">ระบบจะเปลี่ยนสูตรของ${esc(tankLabel(tank))} เป็น <b>${esc(product.name)}</b> ให้ อย่าลืมเติมปุ๋ยสูตรนี้ลงถังจริงก่อนสั่งงาน</div>`;
+    }
+    $$(".tank-opt", modal.el).forEach((b) =>
+      b.addEventListener("click", () => {
+        tank = +b.dataset.tank;
+        refreshTank();
+      })
+    );
+    refreshTank();
+
+    $("#applyConfirm", modal.el).addEventListener("click", async () => {
+      const selected = $$("input[type=checkbox]:checked", modal.el).map((el) => el.value);
+      if (!selected.length) return XF.toast("กรุณาเลือกอย่างน้อย 1 โซน", true);
+      const updates = {};
+      selected.forEach((id) => {
+        updates[`zones/${id}/water_per_tree_l`] = water;
+        if ((down.zones[id] || {}).fert_enabled !== false) {
+          updates[`zones/${id}/fert_per_tree_ml`] = fert;
+          updates[`zones/${id}/tank`] = tank;
+        }
+      });
+      if (!tankMatches()) {
+        updates[`settings/tanks/t${tank}`] = { name: tankLabel(tank), product: product.id, n: product.n, p: product.p, k: product.k };
+      }
+      if (await XF.run(() => store.update(XF.root + "/down", updates), "บันทึกค่าให้โซนแล้ว")) {
+        location.href = "control.html";
+      }
+    });
+  }
+
+  $("#calculateBtn").addEventListener("click", calculate);
+  store.watch(XF.root + "/down", (v) => {
+    down = v || {};
+    renderZonePresets();
+  });
+});
