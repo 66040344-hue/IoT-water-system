@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ตั้งค่า · XactFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <main class="page">
+    <h1 class="page-title">ตั้งค่าระบบ</h1>
+    <p class="page-sub">บัญชีผู้ใช้ ปั๊ม หัวสปริงเกอร์ โซน ถังปุ๋ย เซนเซอร์ และตำแหน่งสวน</p>
+
+    <div class="tabs" id="tabs">
+      <button data-tab="account">บัญชีผู้ใช้</button>
+      <button data-tab="pumps">ปั๊ม</button>
+      <button data-tab="sprinkler">หัวสปริงเกอร์</button>
+      <button data-tab="zones">โซน</button>
+      <button data-tab="tanks">ถังปุ๋ย</button>
+      <button data-tab="sensors">เซนเซอร์</button>
+      <button data-tab="farm">ตำแหน่งสวน</button>
+    </div>
+
+    <!-- บัญชีผู้ใช้ -->
+    <section data-panel="account" hidden>
+      <div class="card">
+        <div class="card-title">บัญชีของฉัน</div>
+        <div class="form-grid">
+          <label class="field"><span>ชื่อ</span><input id="accName"></label>
+          <label class="field"><span>อีเมล</span><input id="accEmail" readonly style="background:var(--bg)"></label>
+          <label class="field"><span>สถานะ</span><input id="accRole" readonly style="background:var(--bg)"></label>
+          <label class="field"><span>อุปกรณ์ที่เชื่อมต่อ</span><input id="accDevice" readonly style="background:var(--bg)"></label>
+        </div>
+        <div class="form-actions">
+          <a class="btn ghost" href="login.html#device">เปลี่ยนอุปกรณ์</a>
+          <button class="btn ghost" id="accLogout">ออกจากระบบ</button>
+          <button class="btn" id="accSave">บันทึกชื่อ</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">ผู้ที่เข้าถึงอุปกรณ์นี้</div>
+        <div class="list" id="members"></div>
+      </div>
+    </section>
+
+    <!-- ปั๊ม -->
+    <section data-panel="pumps" hidden>
+      <form class="card" data-save="down">
+        <div class="card-title">ปั๊มน้ำ</div>
+        <div class="form-grid">
+          <label class="field"><span>ขนาดท่อ (นิ้ว)</span><input type="number" step="0.25" min="0" data-path="settings/water_pump/pipe_in" data-type="number"></label>
+          <label class="field"><span>อัตราการไหล (ลิตร/นาที)</span><input type="number" step="0.1" min="0" data-path="settings/water_pump/lpm" data-type="number">
+            <span class="hint">ใช้คำนวณเวลาให้น้ำและปริมาณน้ำในประวัติ</span></label>
+        </div>
+        <div class="card-title" style="margin-top:18px">ปั๊มปุ๋ย</div>
+        <div class="form-grid">
+          <label class="field"><span>ขนาดท่อ (นิ้ว)</span><input type="number" step="0.25" min="0" data-path="settings/fert_pump/pipe_in" data-type="number"></label>
+          <label class="field"><span>อัตราการไหล (ลิตร/นาที)</span><input type="number" step="0.01" min="0" data-path="settings/fert_pump/lpm" data-type="number">
+            <span class="hint">ใช้ประมาณเวลาจ่ายปุ๋ย และใช้แทน flow meter เมื่อไม่ได้ติดตั้ง</span></label>
+        </div>
+        <div class="card-title" style="margin-top:18px">ลำดับการให้ปุ๋ย</div>
+        <div class="form-grid">
+          <label class="field"><span>ให้น้ำนำก่อนจ่ายปุ๋ย (วินาที)</span><input type="number" min="0" max="3600" data-path="settings/prewet_sec" data-type="number"></label>
+          <label class="field"><span>ล้างท่อปุ๋ยหลังจ่าย (วินาที)</span><input type="number" min="0" max="3600" data-path="settings/flush_sec" data-type="number"></label>
+          <label class="field"><span>ตัดการทำงานโหมด Manual เมื่อเปิดค้าง (นาที)</span><input type="number" min="0" max="1440" data-path="settings/manual_max_min" data-type="number">
+            <span class="hint">0 = ไม่ตัด</span></label>
+        </div>
+        <div class="form-actions"><button class="btn">บันทึก</button></div>
+      </form>
+    </section>
+
+    <!-- หัวสปริงเกอร์ -->
+    <section data-panel="sprinkler" hidden>
+      <form class="card" data-save="down">
+        <div class="card-title">หัวสปริงเกอร์</div>
+        <div class="form-grid">
+          <label class="field"><span>อัตราการไหลต่อหัว (ลิตร/ชั่วโมง)</span><input type="number" step="1" min="0" data-path="settings/sprinkler/lph" data-type="number">
+            <span class="hint">จำนวนหัวต่อต้นกำหนดในแต่ละโซน</span></label>
+        </div>
+        <div class="card-title" style="margin-top:18px">ค่าที่ใช้ในหน้าคำนวณ</div>
+        <div class="form-grid">
+          <label class="field"><span>น้ำพื้นฐาน (ลิตร/ตร.ม. ทรงพุ่ม)</span><input type="number" step="0.1" min="0" data-path="settings/base_water_per_sqm" data-type="number"></label>
+          <label class="field"><span>ประสิทธิภาพระบบให้น้ำ (%)</span><input type="number" step="1" min="1" max="100" data-path="settings/irrigation_efficiency" data-type="number"></label>
+        </div>
+        <div class="form-actions"><button class="btn">บันทึก</button></div>
+      </form>
+      <div class="card">
+        <div class="card-title">อัตราการไหลที่ใช้จริงของแต่ละโซน</div>
+        <p class="small muted" style="margin-bottom:6px">ระบบใช้ค่าที่น้อยกว่าระหว่างอัตราการไหลของปั๊ม กับผลรวมของหัวสปริงเกอร์ในโซน</p>
+        <div class="list" id="zoneFlows"></div>
+      </div>
+    </section>
+
+    <!-- โซน -->
+    <section data-panel="zones" hidden>
+      <div class="card">
+        <div class="row between">
+          <div class="card-title" style="margin:0">โซน</div>
+          <button class="btn sm" id="addZone">+ เพิ่มโซน</button>
+        </div>
+        <div class="list" id="zoneList" style="margin-top:6px"></div>
+      </div>
+    </section>
+
+    <!-- ถังปุ๋ย -->
+    <section data-panel="tanks" hidden>
+      <div id="tankCards"></div>
+    </section>
+
+    <!-- เซนเซอร์ -->
+    <section data-panel="sensors" hidden>
+      <form class="card" data-save="down">
+        <div class="card-title">Flow meter ปุ๋ย (3 ตัว)</div>
+        <p class="small muted" style="margin-bottom:10px">แบบพัลส์: ใส่ค่า K เป็นจำนวนพัลส์ต่อลิตร (เช่น YF-S201 ≈ 450, YF-S401 ≈ 5880) · แบบอนาล็อก: ใส่อัตราการไหลที่สัญญาณเต็มสเกล · ใส่ 0 ถ้าไม่ได้ติดตั้ง ระบบจะประมาณจากอัตราการไหลของปั๊มปุ๋ยแทน</p>
+        <div class="form-grid">
+          <label class="field"><span>ถัง 1: K (พัลส์/ลิตร)</span><input type="number" step="0.1" min="0" data-path="settings/flow/f1/k" data-type="number"></label>
+          <label class="field"><span>ถัง 2: K (พัลส์/ลิตร)</span><input type="number" step="0.1" min="0" data-path="settings/flow/f2/k" data-type="number"></label>
+          <label class="field"><span>ถัง 3: K (พัลส์/ลิตร)</span><input type="number" step="0.1" min="0" data-path="settings/flow/f3/k" data-type="number"></label>
+          <label class="field"><span>ถัง 1: เต็มสเกล (ลิตร/นาที)</span><input type="number" step="0.1" min="0" data-path="settings/flow/f1/full_lpm" data-type="number"></label>
+          <label class="field"><span>ถัง 2: เต็มสเกล (ลิตร/นาที)</span><input type="number" step="0.1" min="0" data-path="settings/flow/f2/full_lpm" data-type="number"></label>
+          <label class="field"><span>ถัง 3: เต็มสเกล (ลิตร/นาที)</span><input type="number" step="0.1" min="0" data-path="settings/flow/f3/full_lpm" data-type="number"></label>
+        </div>
+
+        <div class="card-title" style="margin-top:18px">ช่องอนาล็อกสำรอง <span class="small muted" id="adcRaw"></span></div>
+        <label class="check-row" style="margin-bottom:10px"><input type="checkbox" data-path="settings/spare_adc/enabled"><span>แสดงค่าช่องนี้ในหน้าหลัก</span></label>
+        <div class="form-grid">
+          <label class="field"><span>ชื่อที่แสดง</span><input data-path="settings/spare_adc/name"></label>
+          <label class="field"><span>หน่วย</span><input data-path="settings/spare_adc/unit"></label>
+          <label class="field"><span>ค่า ADC ต่ำสุด</span><input type="number" min="0" max="4095" data-path="settings/spare_adc/raw_min" data-type="number"></label>
+          <label class="field"><span>ค่า ADC สูงสุด</span><input type="number" min="0" max="4095" data-path="settings/spare_adc/raw_max" data-type="number"></label>
+          <label class="field"><span>ค่าที่แสดงเมื่อ ADC ต่ำสุด</span><input type="number" step="0.1" data-path="settings/spare_adc/out_min" data-type="number"></label>
+          <label class="field"><span>ค่าที่แสดงเมื่อ ADC สูงสุด</span><input type="number" step="0.1" data-path="settings/spare_adc/out_max" data-type="number"></label>
+        </div>
+
+        <div class="card-title" style="margin-top:18px">เซนเซอร์ RS485 (Modbus RTU, 9600 8N1)</div>
+        <div id="rs485Fields"></div>
+        <div class="form-actions"><button class="btn">บันทึก</button></div>
+      </form>
+    </section>
+
+    <!-- ตำแหน่งสวน -->
+    <section data-panel="farm" hidden>
+      <form class="card" id="farmForm">
+        <div class="card-title">ข้อมูลสวน</div>
+        <div class="form-grid">
+          <label class="field"><span>ชื่อสวน</span><input id="farmName" required></label>
+          <label class="field"><span>ที่อยู่ / ตำแหน่ง</span><input id="farmAddress" placeholder="ตำบล อำเภอ จังหวัด"></label>
+          <label class="field"><span>ละติจูด</span><input id="farmLat" type="number" step="any" min="-90" max="90"></label>
+          <label class="field"><span>ลองจิจูด</span><input id="farmLng" type="number" step="any" min="-180" max="180"></label>
+        </div>
+        <p class="small muted" style="margin-top:8px">ลากหมุดบนแผนที่เพื่อย้ายตำแหน่งสวน พิกัดนี้ใช้ดึงพยากรณ์อากาศ</p>
+
+        <div class="card-title" style="margin-top:18px">วาดกรอบแปลง</div>
+        <div class="row wrap" style="margin-bottom:10px">
+          <label class="field" style="flex:1;min-width:180px"><span>กรอบที่จะวาด</span><select id="drawTarget"></select></label>
+          <div class="seg" id="mapLayer"><button type="button" data-layer="sat" class="active">ดาวเทียม</button><button type="button" data-layer="street">แผนที่</button></div>
+        </div>
+        <div class="row wrap" style="margin-bottom:10px">
+          <button type="button" class="btn sm" id="drawToggle">เริ่มวาด</button>
+          <button type="button" class="btn ghost sm" id="drawUndo">ลบจุดล่าสุด</button>
+          <button type="button" class="btn ghost sm" id="drawClear">ล้างกรอบนี้</button>
+          <button type="button" class="btn ghost sm" id="locateMe">ใช้ตำแหน่งปัจจุบัน</button>
+          <span class="small muted" id="drawInfo"></span>
+        </div>
+        <div id="map"></div>
+        <div class="form-actions"><button class="btn">บันทึกตำแหน่งและกรอบแปลง</button></div>
+      </form>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/demo.js"></script>
+  <script src="js/pages/settings-map.js"></script>
+  <script src="js/pages/settings.js"></script>
+</body>
+
+</html>

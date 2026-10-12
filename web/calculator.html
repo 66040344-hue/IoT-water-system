@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>คำนวณ · XactFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <main class="page">
+    <h1 class="page-title">คำนวณการให้ปุ๋ยทางน้ำสำหรับทุเรียน</h1>
+    <p class="page-sub">ประเมินอัตราปุ๋ยน้ำตามพื้นที่ทรงพุ่ม ระยะพัฒนาการ สภาพอากาศ สภาพต้น และผลวิเคราะห์ดิน</p>
+
+    <form id="calcForm" class="no-print" onsubmit="return false">
+      <div class="card">
+        <div class="card-title">1. ข้อมูลทรงพุ่มและจำนวนต้น</div>
+        <div class="form-grid">
+          <label class="field"><span>เส้นผ่านศูนย์กลางทรงพุ่ม (เมตร) *</span>
+            <input type="number" id="canopyDiameter" value="8" min="0.1" step="0.1" inputmode="decimal">
+            <div class="row wrap" data-preset="canopyDiameter">
+              <button type="button" class="chip" data-v="4">4 ม.</button><button type="button" class="chip" data-v="6">6 ม.</button>
+              <button type="button" class="chip" data-v="8">8 ม.</button><button type="button" class="chip" data-v="10">10 ม.</button>
+            </div>
+          </label>
+          <label class="field"><span>จำนวนต้นทุเรียน (ต้น) *</span>
+            <input type="number" id="treeCount" value="10" min="1" step="1" inputmode="numeric">
+            <div class="row wrap" id="zonePresets"></div>
+          </label>
+        </div>
+        <label class="field" style="margin-top:12px"><span>ระยะการเจริญเติบโต / พัฒนาการทุเรียน *</span>
+          <select id="growthStage">
+            <option value="สร้างชุดใบ">ระยะสร้างชุดใบ (ปกติ 3:1:1, ต้นโทรม 4:1:1)</option>
+            <option value="สะสมอาหาร">ระยะสะสมอาหาร (เน้น P, K สูง 1:5:5)</option>
+            <option value="พัฒนาดอกเดือน1">ระยะพัฒนาดอกเดือน 1 (1:5:5)</option>
+            <option value="พัฒนาดอกเดือน2">ระยะพัฒนาดอกเดือน 2 (1:1:1)</option>
+            <option value="ติดผลเล็ก">ระยะติดผลเล็ก เดือน 1–2 (2:1:4)</option>
+            <option value="พัฒนาผล">ระยะพัฒนาผล เดือน 3 (ขยายผล 3:1:6)</option>
+            <option value="ปรับปรุงคุณภาพ">ระยะปรับปรุงคุณภาพ เดือน 4 (สร้างความหวาน 1:2:8)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="card">
+        <div class="card-title">2. สภาพอากาศและสภาพแวดล้อม</div>
+        <label class="field"><span>สภาพอากาศปัจจุบัน</span>
+          <select id="weather">
+            <option value="ปกติ">อากาศปกติ (เหมาะแก่การให้ปุ๋ย)</option>
+            <option value="ฟ้าครึ้ม">ฟ้าครึ้ม (ปรับลดปริมาณเล็กน้อย)</option>
+            <option value="เมฆมาก">เมฆมาก (ปรับลดปริมาณเล็กน้อย)</option>
+            <option value="อากาศแห้ง">อากาศแห้ง / แดดจัด / ลมแรง</option>
+            <option value="หลังฝนตก">หลังฝนตก</option>
+            <option value="ฝนชุก">ฝนตกชุก / ตกต่อเนื่อง (งดจ่ายปุ๋ยน้ำ)</option>
+          </select>
+        </label>
+        <label class="check-row" id="wetSoilBox" hidden style="margin-top:12px">
+          <input type="checkbox" id="soilStillWet">
+          <span><b>ดินยังแฉะ มีน้ำขัง หรือระบายน้ำไม่ทัน</b><br><span class="small muted">เปิดไว้เพื่อระงับการจ่ายปุ๋ยชั่วคราวเพื่อความปลอดภัยของราก</span></span>
+        </label>
+      </div>
+
+      <div class="card">
+        <div class="card-title">3. สภาพต้นทุเรียนและปัญหาที่พบ</div>
+        <label class="field"><span>สภาพต้นโดยรวม</span>
+          <select id="treeCondition">
+            <option value="สมบูรณ์">ต้นสมบูรณ์ แข็งแรงตามปกติ</option>
+            <option value="โทรม">ต้นโทรม สุขภาพไม่ดี (ต้องการฟื้นฟู)</option>
+            <option value="เฝ้าระวัง">พบความผิดปกติเล็กน้อย ต้องเฝ้าระวัง</option>
+            <option value="เครียดเล็กน้อย">ต้นมีอาการเครียดเล็กน้อย (ปรับลด 25%)</option>
+            <option value="เครียดปานกลาง">ต้นมีอาการเครียดปานกลาง (ปรับลด 50%)</option>
+            <option value="เครียดรุนแรง">ต้นมีอาการเครียดรุนแรง (ระงับการจ่ายปุ๋ย)</option>
+            <option value="รากวิกฤต">พบภาวะรากเน่า / รากขาดอากาศ (ระงับการจ่ายปุ๋ย)</option>
+          </select>
+        </label>
+        <div class="field" style="margin-top:12px"><span>อาการผิดปกติที่พบเพิ่มเติม (ถ้ามี)</span>
+          <div class="row wrap" id="crisisGroup">
+            <button type="button" class="chip" data-crisis="อาการใบไหม้">ใบไหม้</button>
+            <button type="button" class="chip" data-crisis="แตกใบอ่อน">แตกใบอ่อน</button>
+            <button type="button" class="chip" data-crisis="ผลร่วง">ผลร่วง</button>
+            <button type="button" class="chip" data-crisis="ดอกร่วง">ดอกร่วง</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">4. ผลวิเคราะห์ดินทางห้องปฏิบัติการ (ถ้ามี)</div>
+        <label class="check-row">
+          <input type="checkbox" id="hasSoilAnalysis">
+          <span><b>มีผลวิเคราะห์ดินจากห้องปฏิบัติการ</b><br><span class="small muted">กรอกค่า N, P, K, pH, OM, EC เพื่อปรับสูตรปุ๋ยให้แม่นยำขึ้น</span></span>
+        </label>
+        <div id="soilFields" hidden style="margin-top:12px">
+          <div class="form-grid">
+            <label class="field"><span>OM (%) *</span><input type="number" id="soilOM" min="0" step="0.1" placeholder="เช่น 2.1"></label>
+            <label class="field"><span>C:N Ratio *</span><input type="number" id="soilCN" min="1" step="0.1" placeholder="เช่น 9"></label>
+            <label class="field"><span>N (mg/kg) คำนวณอัตโนมัติ</span><input type="number" id="soilN" readonly placeholder="อัตโนมัติ" style="background:var(--bg)"></label>
+            <label class="field"><span>P (mg/kg) *</span><input type="number" id="soilP" min="0" step="0.1" placeholder="เช่น 35"></label>
+            <label class="field"><span>K (mg/kg) *</span><input type="number" id="soilK" min="0" step="0.1" placeholder="เช่น 120"></label>
+            <label class="field"><span>pH ดิน</span><input type="number" id="soilPH" min="0" max="14" step="0.1" placeholder="5.5"></label>
+            <label class="field"><span>EC (dS/m)</span><input type="number" id="soilEC" min="0" step="0.1" placeholder="0.8"></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="notice red" id="errorBox" hidden style="margin-top:12px"></div>
+      <button type="button" class="btn block" id="calculateBtn" style="margin-top:14px;min-height:52px;font-size:1.05rem">คำนวณการให้ปุ๋ยทางน้ำ</button>
+    </form>
+
+    <section class="card" id="resultCard" hidden style="margin-top:18px"></section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/demo.js"></script>
+  <script src="js/calc-engine.js"></script>
+  <script src="js/pages/calculator.js"></script>
+</body>
+
+</html>
