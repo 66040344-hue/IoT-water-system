@@ -1,5 +1,7 @@
 // หน้าหลัก: ภาพรวมของสวน เซนเซอร์ สถานะอุปกรณ์ พยากรณ์อากาศ และงานถัดไป
-XF.boot("home", function () {
+// หน้า view.html (ผู้เข้าชม) ใช้โค้ดชุดเดียวกัน แต่ดูได้อย่างเดียว: window.XF_PAGE = "view"
+const VIEW_ONLY = window.XF_PAGE === "view";
+XF.boot(VIEW_ONLY ? "view" : "home", function () {
   const { store, $, esc, fmt, num } = XF;
   let farm = {};
   let farmReady = false; // รอข้อมูลสวนก่อนสร้างแผนที่ จะได้ไม่เปิดที่พิกัดผิด
@@ -7,7 +9,7 @@ XF.boot("home", function () {
   let up = {};
   let online = false;
   let weatherKey = "";
-  let showAllDays = false;
+  let showAllDays = VIEW_ONLY;
   let forecastData = null;
 
   // รหัสสภาพอากาศ WMO ที่ Open-Meteo ใช้
@@ -29,7 +31,7 @@ XF.boot("home", function () {
     const part = hour < 5 ? "ยามค่ำ" : hour < 12 ? "ยามเช้า" : hour < 17 ? "ยามบ่าย" : hour < 20 ? "ยามเย็น" : "ยามค่ำ";
     $("#farmPill").innerHTML = `${XF.icon("pin")}<span>${esc(farm.name || "ยังไม่ได้ตั้งชื่อสวน")}</span>`;
     $("#today").textContent = XF.fmtDate(Date.now());
-    $("#greet").innerHTML = `สวัสดี${part}<small>คุณ ${esc(XF.user.name)}</small>`;
+    $("#greet").textContent = `สวัสดี${part} คุณ ${XF.user.name}`;
   }
 
   function spareValue() {
@@ -44,22 +46,27 @@ XF.boot("home", function () {
   function renderEnv() {
     const s = up.sensors || {};
     const tiles = [
-      { label: "อุณหภูมิอากาศ", value: online && s.dht_ok ? fmt(s.temp, 1) : "–", unit: "°C" },
-      { label: "ความชื้นสัมพัทธ์", value: online && s.dht_ok ? fmt(s.humi, 0) : "–", unit: "%" },
+      { icon: "temp", label: "อุณหภูมิอากาศ", value: online && s.dht_ok ? fmt(s.temp, 1) : "–", unit: "°C" },
+      { icon: "drop", label: "ความชื้นสัมพัทธ์", value: online && s.dht_ok ? fmt(s.humi, 0) : "–", unit: "%" },
     ];
     const spare = spareValue();
-    tiles.push(spare ? { label: spare.name, value: online ? fmt(spare.value, 0) : "–", unit: spare.unit } : { label: "ความชื้นในดิน", value: "–", unit: "%", note: "ยังไม่ได้ติดตั้ง" });
+    tiles.push(
+      spare
+        ? { icon: "leaf", label: spare.name, value: online ? fmt(spare.value, 0) : "–", unit: spare.unit }
+        : { icon: "leaf", label: "ความชื้นในดิน", value: "–", unit: "%", note: "ยังไม่ได้ติดตั้ง" }
+    );
     const rsCfg = (down.settings || {}).rs485 || {};
     ["s1", "s2"].forEach((k) => {
       if (!(rsCfg[k] || {}).enabled) return;
       const r = (s.rs485 || {})[k] || {};
-      tiles.push({ label: rsCfg[k].name || k, value: online && r.ok ? fmt(r.value, 1) : "–", unit: rsCfg[k].unit || "" });
+      tiles.push({ icon: "chart", label: rsCfg[k].name || k, value: online && r.ok ? fmt(r.value, 1) : "–", unit: rsCfg[k].unit || "" });
     });
     $("#env").innerHTML = tiles
       .map(
-        (t) => `<div class="card"><div class="stat-label">${esc(t.label)}</div>
+        (t) => `<div class="card"><span class="stat-ico">${XF.icon(t.icon)}</span>
+          <div><div class="stat-label">${esc(t.label)}</div>
           <div class="num">${t.value}<small>${esc(t.unit)}</small></div>
-          ${t.note ? `<div class="small muted">${t.note}</div>` : ""}</div>`
+          ${t.note ? `<div class="small muted">${t.note}</div>` : ""}</div></div>`
       )
       .join("");
   }
@@ -74,10 +81,10 @@ XF.boot("home", function () {
     const perTree = (v) => (trees ? fmt(v / trees, 1) : "–");
     $("#todayTotals").innerHTML = `
       <div class="card"><div class="stat-label">ปริมาณน้ำ (ลิตร)</div>
-        <div class="num" style="color:var(--blue)">${fmt(water, 0)}</div>
+        <div class="num" style="color:var(--blue-ink)">${fmt(water, 0)}</div>
         <div class="small muted">เฉลี่ย ${perTree(water)} ลิตร/ต้น · ${rows.length} ครั้ง</div></div>
       <div class="card"><div class="stat-label">ปริมาณปุ๋ย (มิลลิลิตร)</div>
-        <div class="num" style="color:var(--orange)">${fmt(fert, 0)}</div>
+        <div class="num" style="color:var(--orange-text)">${fmt(fert, 0)}</div>
         <div class="small muted">เฉลี่ย ${perTree(fert)} มล./ต้น</div></div>`;
   }
 
@@ -138,7 +145,7 @@ XF.boot("home", function () {
         ? runs
             .slice(0, 12)
             .map(
-              ({ at, sch }) => `<div class="run-item"><div><div class="d">${XF.fmtDate(at, { day: "2-digit", month: "2-digit", year: "numeric" })}</div>
+              ({ at, sch }, i) => `<div class="run-item ${i ? "" : "next"}"><div><div class="d">${XF.fmtDate(at, { day: "2-digit", month: "2-digit", year: "numeric" })}</div>
                 <div class="t">${XF.fmtTime(at)}</div></div>
                 <div><b>${sch.fert ? "ให้น้ำ + ปุ๋ย" : "ให้น้ำ"}</b> ${esc(zones[sch.zone].name)}</div></div>`
             )
@@ -152,8 +159,16 @@ XF.boot("home", function () {
     const cur = data.current;
     const daily = data.daily;
     const [icon, text] = wx(cur.weather_code);
-    $("#wxNow").innerHTML = `<span class="wx-icon">${icon}</span><div><div class="num">${fmt(cur.temperature_2m, 0)}°</div>
-      <div>${fmt(daily.temperature_2m_max[0], 0)} / ${fmt(daily.temperature_2m_min[0], 0)}</div></div>`;
+    $("#wxNow").innerHTML = `${fmt(cur.temperature_2m, 0)}<small>°C</small>`;
+    $("#wxChips").innerHTML = [
+      cur.wind_speed_10m != null ? `${XF.icon("wind")}${fmt(cur.wind_speed_10m, 0)} กม./ชม.` : "",
+      `${XF.icon("drop")}${fmt(cur.relative_humidity_2m, 0)}%`,
+      `${icon} ${text}`,
+      `${fmt(daily.temperature_2m_max[0], 0)}° / ${fmt(daily.temperature_2m_min[0], 0)}°`,
+    ]
+      .filter(Boolean)
+      .map((c) => `<span class="hero-chip">${c}</span>`)
+      .join("");
 
     const names = ["วันนี้", "พรุ่งนี้"];
     const count = showAllDays ? daily.time.length : 4;
@@ -162,18 +177,21 @@ XF.boot("home", function () {
       const label = names[i] || XF.fmtDate(date, { weekday: "short" });
       return `<div class="wx-day"><div class="small">${label}</div><div class="wx-icon">${dIcon}</div>
         <b>${fmt(daily.temperature_2m_max[i], 0)}°</b><div class="small muted">${fmt(daily.temperature_2m_min[i], 0)}°</div>
-        <div class="small" style="color:var(--blue)">ฝน ${fmt(daily.precipitation_probability_max[i], 0)}%</div></div>`;
+        <div class="small" style="color:var(--blue-ink)">ฝน ${fmt(daily.precipitation_probability_max[i], 0)}%</div></div>`;
     });
     $("#forecast").className = "";
     $("#forecast").innerHTML = `<div class="row"><span style="font-size:2rem">${icon}</span>
         <div><b>${text}</b><div class="small muted">ความชื้น ${fmt(cur.relative_humidity_2m, 0)}% · ฝนวันนี้ ${fmt(daily.precipitation_sum[0], 1)} มม.</div></div></div>
       <div class="wx-days">${days.join("")}</div>
-      <div style="text-align:center;margin-top:10px"><button class="btn ghost sm" id="moreDays">${showAllDays ? "ย่อ" : "ดูเพิ่มเติม"}</button></div>
+      <div style="text-align:center;margin-top:10px"><a class="btn ghost sm" data-allow href="weather.html">ดูพยากรณ์ละเอียด</a></div>
       <div class="small muted" style="margin-top:8px">ข้อมูลพยากรณ์จาก Open-Meteo ตามพิกัดสวน</div>`;
-    $("#moreDays").addEventListener("click", () => {
-      showAllDays = !showAllDays;
-      renderForecast();
-    });
+    const more = $("#moreDays");
+    if (more) {
+      more.addEventListener("click", () => {
+        showAllDays = !showAllDays;
+        renderForecast();
+      });
+    }
   }
 
   async function loadWeather() {
@@ -193,7 +211,7 @@ XF.boot("home", function () {
       } else {
         const url =
           `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
-          "&current=temperature_2m,relative_humidity_2m,weather_code" +
+          "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m" +
           "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum" +
           "&timezone=Asia%2FBangkok&forecast_days=7";
         const res = await fetch(url);

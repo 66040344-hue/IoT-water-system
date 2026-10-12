@@ -13,8 +13,31 @@ window.XF = window.XF || {};
     const db = firebase.database();
     const toUser = (u) => (u ? { uid: u.uid, email: u.email, name: u.displayName || u.email.split("@")[0] } : null);
 
+    // จำค่าล่าสุดของข้อมูลอุปกรณ์ไว้ในเครื่อง เปิดหน้าใหม่จะแสดงได้ทันทีโดยไม่ต้องรอเชื่อมต่อ Firebase
+    const CACHE = "xf_c:";
+    const cacheRead = (path) => {
+      try {
+        return localStorage.getItem(CACHE + path);
+      } catch (err) {
+        return null;
+      }
+    };
+    const cacheWrite = (path, json) => {
+      try {
+        localStorage.setItem(CACHE + path, json);
+      } catch (err) {
+        /* พื้นที่เต็ม: ข้ามไป */
+      }
+    };
+    const clearCache = () => {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith(CACHE))
+        .forEach((k) => localStorage.removeItem(k));
+    };
+
     return {
       demo: false,
+      clearCache,
       onAuth: (cb) => auth.onAuthStateChanged((u) => cb(toUser(u))),
       signIn: (email, password) => auth.signInWithEmailAndPassword(email, password),
       async signUp(name, email, password) {
@@ -24,16 +47,67 @@ window.XF = window.XF || {};
       async setName(name) {
         await auth.currentUser.updateProfile({ displayName: name });
       },
-      signOut: () => auth.signOut(),
+      // ผู้ดูแลสร้างบัญชีให้ผู้อื่น: ใช้แอป Firebase อีกตัวเพื่อไม่ให้บัญชีผู้ดูแลหลุดออกจากระบบ
+      async createUser(name, email, password) {
+        const app = firebase.apps.find((a) => a.name === "xf-admin") || firebase.initializeApp(config, "xf-admin");
+        const second = app.auth();
+        try {
+          const cred = await second.createUserWithEmailAndPassword(email, password);
+          await cred.user.updateProfile({ displayName: name });
+          return cred.user.uid;
+        } finally {
+          await second.signOut().catch(() => {});
+        }
+      },
+      sendReset: (email) => auth.sendPasswordResetEmail(email),
+      signOut: () => {
+        clearCache();
+        return auth.signOut();
+      },
+      // เรียก Cloud Function (เช่น ส่งสรุปเข้า LINE) ต้องโหลด firebase-functions-compat.js ในหน้านั้นก่อน
+      async call(name, data) {
+        if (!firebase.functions) throw new Error("หน้านี้ยังไม่ได้โหลดไลบรารี Cloud Functions");
+        const region = config.functionsRegion || "asia-southeast1";
+        const res = await firebase.app().functions(region).httpsCallable(name)(data || {});
+        return res.data;
+      },
       get: async (path) => (await db.ref(path).get()).val(),
       set: (path, value) => db.ref(path).set(value),
       update: (path, values) => db.ref(path).update(values),
       push: (path, value) => db.ref(path).push(value).then((r) => r.key),
       remove: (path) => db.ref(path).remove(),
-      watch(path, cb) {
+      // opts.cache === false: ไม่ส่งค่าที่จำไว้ รอค่าจริงจากเซิร์ฟเวอร์เท่านั้น
+      watch(path, cb, opts) {
         const ref = db.ref(path);
-        const handler = ref.on("value", (snap) => cb(snap.val()), (err) => console.error(path, err));
-        return () => ref.off("value", handler);
+        const useCache = path.startsWith("/devices/") && !(opts && opts.cache === false);
+        let sent = null; // JSON ของค่าล่าสุดที่ส่งให้ cb แล้ว
+        let stopped = false;
+        const cached = useCache ? cacheRead(path) : null;
+        if (cached != null) {
+          queueMicrotask(() => {
+            if (stopped || sent != null) return;
+            sent = cached;
+            cb(JSON.parse(cached));
+          });
+        }
+        const handler = ref.on(
+          "value",
+          (snap) => {
+            const value = snap.val();
+            if (useCache) {
+              const json = JSON.stringify(value);
+              if (json === sent) return; // ตรงกับที่แสดงอยู่แล้ว ไม่ต้องวาดซ้ำ
+              sent = json;
+              cacheWrite(path, json);
+            }
+            cb(value);
+          },
+          (err) => console.error(path, err)
+        );
+        return () => {
+          stopped = true;
+          ref.off("value", handler);
+        };
       },
       async range(path, child, from, to) {
         const snap = await db.ref(path).orderByChild(child).startAt(from).endAt(to).get();
@@ -99,13 +173,21 @@ window.XF = window.XF || {};
 
     return {
       demo: true,
+      clearCache() {},
       onAuth(cb) {
         authCb = cb;
         setTimeout(() => cb(currentUser()), 0);
       },
       async signIn(email) {
-        setUser({ uid: "demo-user", email, name: (currentUser() || {}).name || email.split("@")[0] });
+        const uname = email.split("@")[0];
+        const users = tree.users || {};
+        const found = Object.keys(users).find((id) => users[id].username === uname);
+        setUser({ uid: found || "demo-user", email, name: found ? users[found].name : (currentUser() || {}).name || uname });
       },
+      async createUser(name, email) {
+        return "demo-" + email.split("@")[0];
+      },
+      async sendReset() {},
       async signUp(name, email) {
         setUser({ uid: "demo-user", email, name });
       },
@@ -115,11 +197,18 @@ window.XF = window.XF || {};
       async signOut() {
         setUser(null);
       },
-      get: async (path) => read(path),
+      // โหมดสาธิตไม่มีเซิร์ฟเวอร์ LINE: ตอบแบบจำลองเพื่อให้หน้าจอใช้งานได้
+      async call(name) {
+        if (name === "lineStatus") return { configured: false, botUrl: "", recipients: [], demo: true };
+        if (name === "lineCreateLinkCode") return { code: "000000", expiresInSec: 600, demo: true };
+        return { sent: 0, demo: true };
+      },
+      get: async (path) => (path === "/admins/demo-user" ? true : read(path)),
       async set(path, value) {
-        // เลียนแบบกฎความปลอดภัย: เข้าร่วมอุปกรณ์ได้เมื่อรหัสตรงเท่านั้น
+        // เลียนแบบกฎความปลอดภัย: เข้าร่วมอุปกรณ์ด้วยตัวเองได้เมื่อรหัสเข้าร่วมตรงเท่านั้น (ผู้ดูแลสร้างให้ได้เสมอ)
         const m = path.match(/^\/members\/([^/]+)\/[^/]+$/);
-        if (m && value && value.code !== read("/device_secrets/" + m[1])) {
+        const asAdmin = value && value.by;
+        if (m && value && !asAdmin && value.code !== (read("/join_codes/" + m[1]) || read("/device_secrets/" + m[1]))) {
           throw Object.assign(new Error("permission denied"), { code: "PERMISSION_DENIED" });
         }
         write(path, value);

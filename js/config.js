@@ -8,5 +8,7 @@ window.XF_FIREBASE_CONFIG = {
   storageBucket: "iot-water-system-98daf.firebasestorage.app",
   messagingSenderId: "868765660161",
   appId: "1:868765660161:web:5b5c59a245c05678d2bc00",
-  measurementId: "G-M49NPRBZS8"
+  measurementId: "G-M49NPRBZS8",
+  // region ของ Cloud Functions (แจ้งเตือน/สรุปผลทาง LINE) ต้องตรงกับ setGlobalOptions ใน functions/index.js
+  functionsRegion: "asia-southeast1"
 };

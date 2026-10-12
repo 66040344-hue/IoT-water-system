@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#06121a">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>พยากรณ์อากาศ · XactFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <main class="page wx-page">
+    <div class="wx-head">
+      <div>
+        <h1 class="page-title">พยากรณ์อากาศ</h1>
+        <p class="page-sub" id="wxPlace" style="margin-bottom:0">กำลังโหลด…</p>
+      </div>
+      <div class="row no-print">
+        <a class="btn ghost sm" id="wxBack" href="index.html">กลับหน้าหลัก</a>
+        <button class="btn ghost sm" id="wxRefresh">รีเฟรช</button>
+      </div>
+    </div>
+
+    <div id="wxBody" aria-live="polite">
+      <div class="card"><span class="skeleton sk-line lg"></span><span class="skeleton sk-line"></span><span class="skeleton sk-block"></span></div>
+    </div>
+
+    <footer class="wx-foot">
+      <b>แหล่งข้อมูล</b>
+      <ul>
+        <li>พยากรณ์อากาศ (อุณหภูมิ ความชื้น ลม ความกดอากาศ ทัศนวิสัย ดัชนี UV อาทิตย์ขึ้น-ลง): <a href="https://open-meteo.com/en/docs" target="_blank" rel="noopener">Open-Meteo Weather Forecast API</a> ซึ่งรวมแบบจำลองจากสถาบันอุตุนิยมวิทยาระดับประเทศ เช่น NOAA, DWD, ECMWF</li>
+        <li>คุณภาพอากาศ (AQI แบบ US AQI, PM2.5, PM10): <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noopener">Open-Meteo Air Quality API</a> จากแบบจำลอง CAMS ของ Copernicus / ECMWF</li>
+        <li>ข้อมูลอนุญาตให้ใช้ภายใต้ <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> เป็นข้อมูลจากแบบจำลอง ณ พิกัดสวน อาจต่างจากค่าที่วัดจริงในพื้นที่</li>
+      </ul>
+    </footer>
+  </main>
+
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/store.js"></script>
+  <script defer src="js/app.js"></script>
+  <script defer src="js/demo.js"></script>
+  <script defer src="js/pages/weather.js"></script>
+</body>
+
+</html>

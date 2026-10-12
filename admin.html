@@ -2,186 +2,87 @@
 <html lang="th">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Irrigation IoT - Admin</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#06121a">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>ผู้ดูแลระบบ · XactFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
-    <nav class="navbar">
-        <div class="nav-left">
-            <button class="hamburger-btn" onclick="toggleSidebar()">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-            </button>
-            <div class="logo">Water system control</div>
-        </div>
-        <div class="nav-links">
-            <!-- Legacy hidden by CSS -->
-        </div>
-    </nav>
+  <main class="page no-nav" style="max-width:760px">
+    <h1 class="page-title">ผู้ดูแลระบบ</h1>
+    <p class="page-sub">สร้างบัญชีให้ผู้ใช้ เลือกสถานะตั้งแต่แรก แล้วส่งชื่อผู้ใช้กับรหัสผ่านให้เขาเข้าสู่ระบบได้ทันที</p>
 
-    <!-- Sidebar Menu -->
-    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="logo" style="font-size: 1.2rem;">Menu</div>
-            <button class="close-btn" onclick="toggleSidebar()">✕</button>
+    <!-- ยังไม่ใช่ผู้ดูแล -->
+    <section class="card" id="notAdmin" hidden>
+      <div class="card-title">บัญชีนี้ยังไม่ได้รับสิทธิ์ผู้ดูแล</div>
+      <p class="small muted" style="margin-bottom:10px">ผู้ดูแลคนแรกต้องตั้งค่าใน Firebase Console: Realtime Database &gt; Data &gt; เพิ่มโหนด <b>admins</b> แล้วเพิ่มคีย์เป็นรหัสผู้ใช้ด้านล่าง ค่า <b>true</b> (ไฟล์ตัวอย่างอยู่ที่ firebase/seed.example.json)</p>
+      <div class="cred" id="myUid"></div>
+    </section>
+
+    <div id="adminBody" hidden>
+      <form class="card" id="createForm">
+        <div class="card-title">สร้างบัญชีผู้ใช้ใหม่</div>
+        <div class="form-grid">
+          <label class="field"><span>ชื่อที่แสดง</span><input id="uName" maxlength="40" placeholder="เช่น สมชาย ใจดี" required></label>
+          <label class="field"><span>ชื่อผู้ใช้ (Username)</span><input id="uUser" maxlength="40" autocapitalize="none" spellcheck="false" placeholder="เช่น somchai" required>
+            <span class="hint">a-z 0-9 . _ - ยาว 3 ตัวขึ้นไป หรือกรอกอีเมลจริงก็ได้ (จะรีเซ็ตรหัสผ่านทางอีเมลได้)</span></label>
+          <label class="field"><span>รหัสผ่าน</span>
+            <div class="row"><input id="uPass" style="flex:1" minlength="6" required><button type="button" class="btn ghost sm" id="genPass">สุ่มใหม่</button></div></label>
+          <label class="field"><span>อุปกรณ์ (Device ID)</span><input id="uDevice" autocapitalize="characters" placeholder="เช่น TNA-0001"></label>
         </div>
-        <div class="nav-links-sidebar">
-            <a href="index.html">ภาพรวม (Dashboard)</a>
-            <a href="control.html">ควบคุม (Control)</a>
-            <a href="calculator.html">คำนวณ (Calculator)</a>
-            <a href="schedule.html">ตั้งเวลา (Schedule)</a>
-            <a href="history.html">ประวัติ (History)</a>
-            <a href="admin.html" class="active">ตั้งค่าระบบ (Admin)</a>
+
+        <div class="field" style="margin-top:14px"><span>สถานะของผู้ใช้</span>
+          <div class="role-opts" id="roleOpts">
+            <button type="button" class="role-opt" data-role="viewer"><b>ผู้เข้าชม</b><span>ดูภาพรวมสวนแบบสด กดสั่งงานไม่ได้</span></button>
+            <button type="button" class="role-opt active" data-role="member"><b>ผู้ใช้งาน</b><span>ควบคุม ตั้งเวลา คำนวณ ดูประวัติ</span></button>
+            <button type="button" class="role-opt" data-role="owner"><b>เจ้าของสวน</b><span>ทำได้ทุกอย่าง รวมตั้งค่าระบบ</span></button>
+            <button type="button" class="role-opt" data-role="admin"><b>ผู้ดูแลระบบ</b><span>จัดการบัญชีผู้ใช้ทั้งหมด</span></button>
+          </div>
         </div>
+        <div class="notice red" id="createError" hidden style="margin-top:12px"></div>
+        <div class="form-actions"><button class="btn" id="createBtn">สร้างบัญชี</button></div>
+      </form>
+
+      <section class="card" id="credCard" hidden>
+        <div class="row between wrap">
+          <div class="card-title" style="margin:0">ส่งข้อมูลนี้ให้ผู้ใช้</div>
+          <button class="btn sm" id="copyCred">คัดลอกข้อความ</button>
+        </div>
+        <pre class="cred" id="credText"></pre>
+        <p class="small muted">รหัสผ่านจะแสดงครั้งนี้เท่านั้น ให้ผู้ใช้เปลี่ยนรหัสผ่านเองหลังเข้าสู่ระบบครั้งแรก</p>
+      </section>
+
+      <section class="card">
+        <div class="card-title">บัญชีที่สร้างไว้</div>
+        <div id="userList" class="list"><div class="empty">กำลังโหลด…</div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">รหัสเข้าร่วม (ให้ผู้ใช้เชื่อมต่อด้วยตัวเอง)</div>
+        <p class="small muted" style="margin-bottom:10px">ปิดไว้เป็นค่าเริ่มต้น ผู้ใช้จะเข้าได้เฉพาะบัญชีที่ผู้ดูแลสร้างให้ ถ้าเปิด ผู้ที่มีบัญชีและรู้รหัสนี้จะเข้าเป็น "ผู้ใช้งาน" ได้เอง</p>
+        <div class="row wrap">
+          <span id="joinState" class="grow muted">เลือกอุปกรณ์ในช่องด้านบนก่อน</span>
+          <button class="btn ghost sm" id="joinNew">สร้างรหัสใหม่</button>
+          <button class="btn ghost sm" id="joinOff">ปิด</button>
+        </div>
+      </section>
     </div>
+  </main>
 
-    <div class="container">
-        <h1>Admin Control Panel</h1>
-        <p class="subtitle">ตั้งค่าตัวแปรและกฎการคำนวณ (ข้อมูลจะถูกบันทึกลง Firebase)</p>
-
-        <div class="form-card" style="padding: 2rem; border-radius: 1.2rem;">
-            <h2 style="margin-bottom:1.5rem; color:var(--primary); font-size: 1.3rem;">🌱 ค่าพื้นฐาน (Base Values)</h2>
-            <div
-                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-                <div class="form-group" style="margin: 0;">
-                    <label
-                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">น้ำ/ตร.ม.
-                        ทรงพุ่ม (ลิตร)</label>
-                    <input type="number" id="base_water" step="0.1" value="5"
-                        style="height: 50px; border-radius: 0.6rem;">
-                </div>
-                <div class="form-group" style="margin: 0;">
-                    <label
-                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">ปุ๋ย/อายุ 1
-                        ปี (กรัม)</label>
-                    <input type="number" id="base_fert" step="10" value="200"
-                        style="height: 50px; border-radius: 0.6rem;">
-                </div>
-                <div class="form-group" style="margin: 0;">
-                    <label
-                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">อัตราปั๊มน้ำ
-                        (ลิตร/นาที)</label>
-                    <input type="number" id="pump_flow" step="1" value="10"
-                        style="height: 50px; border-radius: 0.6rem;">
-                </div>
-            </div>
-
-            <h2 style="margin-bottom:1.5rem; color:var(--primary); font-size: 1.3rem;">📊 ตัวคูณตามระยะการเจริญเติบโต
-                (Stage Multipliers)</h2>
-            <div
-                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
-                <div class="form-group" style="margin: 0;">
-                    <label
-                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">แตกใบอ่อน
-                        (Vegetative)</label>
-                    <input type="number" id="stage_vegetative" step="0.1" value="1.2"
-                        style="height: 50px; border-radius: 0.6rem;">
-                </div>
-                <div class="form-group" style="margin: 0;">
-                    <label style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">ออกดอก
-                        (Flowering)</label>
-                    <input type="number" id="stage_flowering" step="0.1" value="1.0"
-                        style="height: 50px; border-radius: 0.6rem;">
-                </div>
-                <div class="form-group" style="margin: 0;">
-                    <label style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">ติดผล
-                        (Fruiting)</label>
-                    <input type="number" id="stage_fruiting" step="0.1" value="1.5"
-                        style="height: 50px; border-radius: 0.6rem;">
-                </div>
-                <div class="form-group" style="margin: 0;">
-                    <label
-                        style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: block;">หลังเก็บเกี่ยว
-                        (Post Harvest)</label>
-                    <input type="number" id="stage_post_harvest" step="0.1" value="0.8"
-                        style="height: 50px; border-radius: 0.6rem;">
-                </div>
-            </div>
-
-            <button class="btn-submit" onclick="saveRules()"
-                style="padding: 1rem; font-size: 1.1rem; border-radius: 0.6rem; margin-top: 1rem; width: 100%;">💾
-                บันทึกกฎลง Database</button>
-            <p id="admin-log"
-                style="color:var(--success); margin-top:0.5rem; text-align:center; font-weight: 500; min-height: 20px; font-size: 0.9rem;">
-            </p>
-        </div>
-    </div>
-
-    <!-- Firebase SDK & Logic -->
-    <script type="module" src="firebase_config.js"></script>
-    <script type="module">
-        import { db, ref, set, get } from './firebase_config.js';
-
-        const rulesRef = ref(db, 'admin_rules');
-
-        // Load existing rules on mount
-        async function loadRules() {
-            try {
-                const snapshot = await get(rulesRef);
-                if (snapshot.exists()) {
-                    const rules = snapshot.val();
-                    document.getElementById('base_water').value = rules.base_water_per_sqm || 5;
-                    document.getElementById('base_fert').value = rules.base_fert_per_year || 200;
-                    document.getElementById('pump_flow').value = rules.pump_flow_rate || 10;
-
-                    if (rules.stage_multipliers) {
-                        document.getElementById('stage_vegetative').value = rules.stage_multipliers.vegetative || 1.2;
-                        document.getElementById('stage_flowering').value = rules.stage_multipliers.flowering || 1.0;
-                        document.getElementById('stage_fruiting').value = rules.stage_multipliers.fruiting || 1.5;
-                        document.getElementById('stage_post_harvest').value = rules.stage_multipliers.post_harvest || 0.8;
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to load rules", error);
-            }
-        }
-        loadRules();
-
-        window.saveRules = function () {
-            const btn = document.querySelector('.btn-submit');
-            btn.innerText = "Saving...";
-
-            const rulesData = {
-                base_water_per_sqm: parseFloat(document.getElementById('base_water').value),
-                base_fert_per_year: parseFloat(document.getElementById('base_fert').value),
-                pump_flow_rate: parseFloat(document.getElementById('pump_flow').value),
-                stage_multipliers: {
-                    vegetative: parseFloat(document.getElementById('stage_vegetative').value),
-                    flowering: parseFloat(document.getElementById('stage_flowering').value),
-                    fruiting: parseFloat(document.getElementById('stage_fruiting').value),
-                    post_harvest: parseFloat(document.getElementById('stage_post_harvest').value)
-                }
-            };
-
-            set(rulesRef, rulesData)
-                .then(() => {
-                    document.getElementById('admin-log').innerText = "บันทึกข้อมูลเรียบร้อยแล้ว!";
-                    setTimeout(() => document.getElementById('admin-log').innerText = "", 3000);
-                })
-                .catch((error) => {
-                    document.getElementById('admin-log').style.color = "var(--danger)";
-                    document.getElementById('admin-log').innerText = "เกิดข้อผิดพลาด: " + error.message;
-                })
-                .finally(() => {
-                    btn.innerText = "💾 บันทึกกฎลง Database";
-                });
-        }
-
-        // Sidebar Toggle
-        window.toggleSidebar = function () {
-            document.getElementById('sidebar').classList.toggle('open');
-            document.getElementById('sidebar-overlay').classList.toggle('open');
-        }
-    </script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/store.js"></script>
+  <script defer src="js/app.js"></script>
+  <script defer src="js/pages/admin.js"></script>
 </body>
 
 </html>

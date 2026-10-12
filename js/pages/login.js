@@ -5,7 +5,7 @@
   const deviceForm = $("#deviceForm");
   let mode = "in";
 
-  $("#brand").innerHTML = XF.brandHtml();
+  $("#brand").innerHTML = `<img class="auth-mark" src="icon.svg" alt="" width="72" height="72">${XF.brandHtml()}`;
   $("#demoNote").hidden = !store.demo;
 
   const AUTH_ERRORS = {
@@ -37,7 +37,7 @@
   authForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     showError($("#authError"), "");
-    const email = $("#email").value.trim();
+    const email = XF.toEmail($("#email").value);
     const password = $("#password").value;
     try {
       if (mode === "up") await store.signUp($("#name").value.trim() || email.split("@")[0], email, password);
@@ -68,7 +68,7 @@
     } catch (err) {
       console.error(err);
       const denied = err.code === "PERMISSION_DENIED" || /permission/i.test(err.message);
-      showError($("#deviceError"), denied ? "รหัสอุปกรณ์หรือรหัสประจำอุปกรณ์ไม่ถูกต้อง" : err.message);
+      showError($("#deviceError"), denied ? "รหัสอุปกรณ์หรือรหัสเข้าร่วมไม่ถูกต้อง (หรือผู้ดูแลยังไม่เปิดให้เข้าร่วมด้วยรหัส)" : err.message);
     }
   });
 
@@ -85,6 +85,13 @@
     if (saved && location.hash !== "#device" && (await isMember(saved))) return enter(saved);
 
     const mine = Object.keys((await store.get("/user_devices/" + user.uid).catch(() => null)) || {});
+    const goBack = location.hash === "#device";
+    // บัญชีที่ผู้ดูแลสร้างให้มีอุปกรณ์เดียว -> เข้าเลย
+    if (!goBack && mine.length === 1 && (await isMember(mine[0]))) return enter(mine[0]);
+    // ผู้ดูแลที่ยังไม่ผูกกับอุปกรณ์ -> ไปหน้าผู้ดูแล
+    if (!goBack && !mine.length && (await store.get("/admins/" + user.uid).catch(() => null)) === true) {
+      return location.replace("admin.html");
+    }
     $("#myDevices").innerHTML = mine.length
       ? `<div class="small muted" style="margin-bottom:6px">อุปกรณ์ที่เคยเชื่อมต่อ</div><div class="row wrap">${mine
           .map((id) => `<button type="button" class="btn ghost sm" data-device="${esc(id)}">${esc(id)}</button>`)

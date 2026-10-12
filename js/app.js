@@ -28,7 +28,17 @@
   ];
   XF.productImage = (id) => `assets/fert/${id}.webp`;
 
-  XF.DAY_NAMES = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+  // บัญชีที่ผู้ดูแลสร้างให้ใช้ "ชื่อผู้ใช้" แทนอีเมล (ระบบแปลงเป็นอีเมลภายในให้เอง)
+  XF.USER_DOMAIN = "xactflow.app";
+  XF.toEmail = (v) => {
+    v = String(v || "").trim().toLowerCase();
+    return v.includes("@") ? v : v + "@" + XF.USER_DOMAIN;
+  };
+  XF.isInternalEmail = (e) => String(e || "").endsWith("@" + XF.USER_DOMAIN);
+  XF.usernameOf = (e) => (XF.isInternalEmail(e) ? String(e).split("@")[0] : e || "");
+  XF.ROLE_LABELS = { owner: "เจ้าของสวน", member: "ผู้ใช้งาน", viewer: "ผู้เข้าชม", device: "ตู้ควบคุม" };
+
+  XF.DAY_NAMES =["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
   XF.STEP_LABELS = { prewet: "ให้น้ำนำ", inject: "จ่ายปุ๋ย", flush: "ล้างท่อปุ๋ย", water: "ให้น้ำ" };
   XF.SOURCE_LABELS = { schedule: "ตั้งเวลา", manual: "สั่งด้วยมือ", calc: "จากหน้าคำนวณ" };
 
@@ -100,6 +110,14 @@
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
     pin: '<path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
     drop: '<path d="M12 2.7l5.7 5.6a8 8 0 1 1-11.4 0z"/>',
+    wind: '<path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/>',
+    temp: '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/>',
+    leaf: '<path d="M5 19c0-8 5-13 15-14-1 10-6 15-14 14zM5 19l7-7"/>',
+    chart: '<path d="M4 19V9M10 19V5M16 19v-7M21 19H3"/>',
+    shield: '<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   };
   XF.icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ""}</svg>`;
 
@@ -107,10 +125,15 @@
     XF.$$(".toast").forEach((t) => t.remove());
     const el = document.createElement("div");
     el.className = "toast" + (isError ? " error" : "");
-    el.setAttribute("role", "status");
-    el.textContent = message;
+    el.setAttribute("role", isError ? "alert" : "status");
+    const ico = document.createElement("span");
+    ico.className = "toast-ico";
+    ico.textContent = isError ? "!" : "✓";
+    const text = document.createElement("span");
+    text.textContent = message;
+    el.append(ico, text);
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), isError ? 5000 : 2600);
+    setTimeout(() => el.remove(), isError ? 5000 : 3000);
   };
 
   // เรียกงานที่เขียนข้อมูล แล้วแจ้งผลให้ผู้ใช้
@@ -183,6 +206,20 @@
 
   XF.sendCmd = (cmd) => store.set(XF.root + "/down/control/cmd", { id: String(Date.now()), ...cmd });
 
+  // Cloud Functions ของอุปกรณ์นี้ (แจ้งเตือน/สรุปผลทาง LINE) ข้อความผิดพลาดมาจากเซิร์ฟเวอร์เป็นภาษาไทยอยู่แล้ว
+  XF.lineCall = (name, data) => store.call(name, { device: XF.deviceId, ...data });
+  XF.sendLineReport = async (range) => {
+    try {
+      const res = await XF.lineCall("lineSendReport", range);
+      XF.toast(res.demo ? "โหมดสาธิต: ไม่ได้ส่งข้อความ LINE จริง" : `ส่งสรุปเข้า LINE แล้ว (${res.sent} บัญชี)`);
+      return true;
+    } catch (err) {
+      console.error(err);
+      XF.toast(err.message || "ส่งสรุปเข้า LINE ไม่สำเร็จ", true);
+      return false;
+    }
+  };
+
   // สถานะสดของอุปกรณ์ + ตรวจว่าออนไลน์ (ESP32 ส่ง ts ทุก 2-5 วินาที)
   XF.watchUp = (cb) => {
     let last = null;
@@ -229,14 +266,17 @@
       await store.set("/owners/" + deviceId, u.uid).catch(() => {});
     }
     const root = "/devices/" + deviceId;
-    if (!(await store.get(root + "/down/settings"))) {
-      await store.update(root + "/down", {
-        settings: XF.DEFAULT_DOWN.settings,
-        zones: XF.DEFAULT_DOWN.zones,
-        "control/mode": "auto",
-      });
+    // ผู้ใช้ที่ไม่ใช่เจ้าของเขียนค่าเริ่มต้นไม่ได้ (กฎความปลอดภัย) จึงข้ามไปเงียบ ๆ
+    if (!(await store.get(root + "/down/settings").catch(() => null))) {
+      await store
+        .update(root + "/down", {
+          settings: XF.DEFAULT_DOWN.settings,
+          zones: XF.DEFAULT_DOWN.zones,
+          "control/mode": "auto",
+        })
+        .catch(() => {});
     }
-    if (!(await store.get(root + "/farm"))) await store.set(root + "/farm", XF.DEFAULT_FARM);
+    if (!(await store.get(root + "/farm").catch(() => null))) await store.set(root + "/farm", XF.DEFAULT_FARM).catch(() => {});
     localStorage.setItem("xf_device", deviceId);
   };
 
@@ -253,12 +293,31 @@
   XF.brandHtml = () =>
     `<a class="brand" href="index.html"><span class="brand-name">Xact<span>Flow</span></span><span class="brand-sub">Precision Fertigation System</span></a>`;
 
+  // ปุ่มสลับธีมสว่าง/มืด (js/theme.js เป็นผู้เก็บค่าและตั้ง data-theme)
+  const themeBtnHtml = () => {
+    const dark = window.xfTheme && window.xfTheme.current() === "dark";
+    const label = dark ? "เปลี่ยนเป็นธีมสว่าง" : "เปลี่ยนเป็นธีมมืด";
+    return `<button class="icon-btn theme-btn" id="xfTheme" title="${label}" aria-label="${label}">${XF.icon(dark ? "sun" : "moon")}</button>`;
+  };
+  const bindThemeBtn = () => {
+    const btn = XF.$("#xfTheme");
+    if (!btn || !window.xfTheme) return;
+    btn.addEventListener("click", () => {
+      window.xfTheme.toggle();
+      btn.outerHTML = themeBtnHtml();
+      bindThemeBtn();
+    });
+  };
+
   function renderShell(page) {
     const top = document.createElement("header");
     top.className = "topbar";
+    const viewOnly = page === "view" || XF.role === "viewer";
     top.innerHTML = `${XF.brandHtml()}
       <div class="topbar-actions">
-        <span class="conn" id="xfConn">ออฟไลน์</span>
+        <span class="conn" id="xfConn" role="status" aria-live="polite">ออฟไลน์</span>
+        ${themeBtnHtml()}
+        ${XF.isAdmin ? `<a class="icon-btn" href="admin.html" title="ผู้ดูแลระบบ" aria-label="ผู้ดูแลระบบ">${XF.icon("shield")}</a>` : ""}
         <button class="icon-btn" id="xfLogout" title="ออกจากระบบ" aria-label="ออกจากระบบ">${XF.icon("logout")}</button>
       </div>`;
     document.body.prepend(top);
@@ -269,15 +328,25 @@
       banner.textContent = "โหมดสาธิต: ยังไม่ได้ตั้งค่า Firebase ข้อมูลและอุปกรณ์ถูกจำลองในเบราว์เซอร์นี้";
       top.after(banner);
     }
+    if (viewOnly) {
+      const banner = document.createElement("div");
+      banner.className = "demo-banner view-banner";
+      banner.innerHTML = `${XF.icon("eye")}<span>โหมดผู้เข้าชม · ดูข้อมูลสดของสวนได้อย่างเดียว ไม่สามารถสั่งงานหรือแก้ไขได้</span>`;
+      top.after(banner);
+    } else {
+      const nav = document.createElement("nav");
+      nav.className = "tabbar";
+      nav.setAttribute("aria-label", "เมนูหลัก");
+      // เมนูซ้ายบนจอกว้าง: โลโก้ด้านบน รายการเมนู และข้อมูลอุปกรณ์/ผู้ใช้ด้านล่าง (บนมือถือซ่อนทั้งสองส่วน)
+      nav.innerHTML =
+        `<div class="side-brand"><img src="icon.svg" alt="" width="36" height="36"><span>Xact<b>Flow</b></span></div>` +
+        NAV.map((n) => { const on = n.key === page || (page === "weather" && n.key === "home"); return `<a href="${n.href}" class="${on ? "active" : ""}"${on ? ' aria-current="page"' : ""}>${XF.icon(n.icon)}<span>${n.label}</span></a>`; }).join("") +
+        `<div class="side-foot"><span class="side-dot" id="xfSideDot"></span>
+          <div><b>${XF.esc(XF.deviceId)}</b><small>${XF.esc(XF.user.name || "")} · ${XF.esc(XF.ROLE_LABELS[XF.role] || "")}</small></div></div>`;
+      document.body.appendChild(nav);
+    }
 
-    const nav = document.createElement("nav");
-    nav.className = "tabbar";
-    nav.setAttribute("aria-label", "เมนูหลัก");
-    nav.innerHTML = NAV.map(
-      (n) => `<a href="${n.href}" class="${n.key === page ? "active" : ""}">${XF.icon(n.icon)}<span>${n.label}</span></a>`
-    ).join("");
-    document.body.appendChild(nav);
-
+    bindThemeBtn();
     XF.$("#xfLogout").addEventListener("click", () => {
       if (confirm("ออกจากระบบ?")) store.signOut();
     });
@@ -285,29 +354,119 @@
       const el = XF.$("#xfConn");
       el.classList.toggle("on", online);
       el.textContent = online ? "ออนไลน์" : "ออฟไลน์";
+      const dot = XF.$("#xfSideDot");
+      if (dot) dot.classList.toggle("on", online);
     });
   }
 
   // เรียกจากทุกหน้า (ยกเว้น login): ต้องล็อกอิน + เป็นสมาชิกของอุปกรณ์ (ผ่านรหัสประจำอุปกรณ์) จึงเข้าได้
+  // ผลตรวจสิทธิ์ครั้งล่าสุดถูกจำไว้ใน localStorage: หน้าถัดไปจึงแสดงได้ทันที แล้วตรวจซ้ำกับเซิร์ฟเวอร์อยู่เบื้องหลัง
+  const SESSION_KEY = "xf_session";
+  const readSession = () => {
+    try {
+      return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+    } catch (err) {
+      return null;
+    }
+  };
+  XF.saveSession = () =>
+    localStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ deviceId: XF.deviceId, user: XF.user, owner: XF.ownerUid, role: XF.role, admin: XF.isAdmin })
+    );
+  const dropSession = () => {
+    localStorage.removeItem(SESSION_KEY);
+    store.clearCache();
+  };
+
+  // สิทธิ์: viewer เข้าได้เฉพาะหน้าผู้เข้าชม (view) ส่วนกฎใน database.rules.json เป็นตัวบังคับจริง
   XF.boot = (page, init) => {
+    const deviceId = localStorage.getItem("xf_device");
     let started = false;
-    store.onAuth(async (user) => {
-      if (!user) return location.replace("login.html");
-      if (started) return;
+    let checked = false;
+    const start = (user, owner, role, admin) => {
       XF.user = user;
-
-      const deviceId = localStorage.getItem("xf_device");
-      let member = null;
-      if (deviceId) member = await store.get(`/members/${deviceId}/${user.uid}`).catch(() => null);
-      if (!member) return location.replace("login.html#device");
-
-      started = true;
       XF.deviceId = deviceId;
       XF.root = "/devices/" + deviceId;
-      XF.isOwner = (await store.get("/owners/" + deviceId).catch(() => null)) === user.uid;
+      XF.ownerUid = owner;
+      XF.isOwner = owner === user.uid;
+      XF.role = role || "member";
+      XF.isAdmin = !!admin;
+      if (XF.role === "viewer" && page !== "view" && page !== "weather") return location.replace("view.html");
+      started = true;
       renderShell(page);
       if (store.demo && XF.startDemoDevice) XF.startDemoDevice();
       init();
+    };
+
+    const session = readSession();
+    if (session && deviceId && session.deviceId === deviceId) start(session.user, session.owner, session.role, session.admin);
+
+    store.onAuth(async (user) => {
+      if (!user) {
+        dropSession();
+        return location.replace("login.html");
+      }
+      if (checked) return;
+      checked = true;
+      if (started && XF.user.uid !== user.uid) {
+        dropSession();
+        return location.reload();
+      }
+
+      // undefined = อ่านไม่สำเร็จ (เช่น เน็ตหลุด), null = ไม่ได้เป็นสมาชิกแล้ว
+      const [member, owner, admin] = await Promise.all([
+        deviceId ? store.get(`/members/${deviceId}/${user.uid}`).catch(() => undefined) : null,
+        deviceId ? store.get("/owners/" + deviceId).catch(() => undefined) : null,
+        store.get("/admins/" + user.uid).catch(() => null),
+      ]);
+      const isAdmin = admin === true;
+      if (member === null || (!member && !started)) {
+        dropSession();
+        return location.replace(isAdmin ? "admin.html" : "login.html#device");
+      }
+      if (!member) return;
+
+      const ownerUid = owner === undefined ? (started ? XF.ownerUid : null) : owner;
+      const role = member.role || "member";
+      const changed = started && (ownerUid !== XF.ownerUid || role !== XF.role || isAdmin !== XF.isAdmin);
+      XF.user = XF.user || user;
+      XF.ownerUid = ownerUid;
+      XF.role = role;
+      XF.isAdmin = isAdmin;
+      XF.deviceId = deviceId;
+      XF.saveSession();
+      if (!started) start(user, ownerUid, role, isAdmin);
+      else if (changed) location.reload();
     });
   };
+
+  // หน้าผู้ดูแล: ไม่ต้องเป็นสมาชิกของอุปกรณ์ แต่ต้องอยู่ใน /admins
+  XF.bootAdmin = (init) => {
+    store.onAuth(async (user) => {
+      if (!user) return location.replace("login.html");
+      if (XF.user) return;
+      XF.user = user;
+      XF.isAdmin = (await store.get("/admins/" + user.uid).catch(() => null)) === true;
+      const top = document.createElement("header");
+      top.className = "topbar";
+      top.innerHTML = `${XF.brandHtml()}
+        <div class="topbar-actions">
+          <a class="btn ghost sm" href="index.html">หน้าหลัก</a>
+          ${themeBtnHtml()}
+          <button class="icon-btn" id="xfLogout" title="ออกจากระบบ" aria-label="ออกจากระบบ">${XF.icon("logout")}</button>
+        </div>`;
+      document.body.prepend(top);
+      bindThemeBtn();
+      XF.$("#xfLogout").addEventListener("click", () => {
+        if (confirm("ออกจากระบบ?")) store.signOut();
+      });
+      init(XF.isAdmin);
+    });
+  };
+
+  // ติดตั้ง Service Worker: เก็บหน้าเว็บและสคริปต์ไว้ในเครื่อง เปิดซ้ำได้เร็วและเปิดโครงหน้าได้แม้เน็ตหลุด
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
 })();

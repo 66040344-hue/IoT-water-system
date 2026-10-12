@@ -1,0 +1,11 @@
+{
+  "name": "XactFlow Precision Fertigation",
+  "short_name": "XactFlow",
+  "lang": "th",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ecf2f5",
+  "theme_color": "#06121a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

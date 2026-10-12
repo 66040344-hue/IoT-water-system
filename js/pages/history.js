@@ -34,8 +34,10 @@ XF.boot("history", function () {
     const fert = rows.reduce((sum, r) => sum + num(r.fert_ml), 0);
     $("#summary").innerHTML = `
       <div class="card"><div class="stat-label">จำนวนครั้ง</div><div class="num" style="font-size:1.8rem">${fmt(rows.length)}</div></div>
-      <div class="card"><div class="stat-label">น้ำรวม (ลิตร)</div><div class="num" style="font-size:1.8rem;color:var(--blue)">${fmt(water, 0)}</div></div>
-      <div class="card"><div class="stat-label">ปุ๋ยรวม</div><div class="num" style="font-size:1.8rem;color:var(--orange)">${XF.fmtVolume(fert)}</div></div>`;
+      <div class="card"><div class="stat-label">น้ำรวม (ลิตร)</div><div class="num" style="font-size:1.8rem;color:var(--blue-ink)">${fmt(water, 0)}</div></div>
+      <div class="card"><div class="stat-label">ปุ๋ยรวม</div><div class="num" style="font-size:1.8rem;color:var(--orange-text)">${XF.fmtVolume(fert)}</div></div>`;
+
+    renderBreakdown();
 
     if (!rows.length) {
       $("#rows").innerHTML = '<div class="empty">ไม่มีประวัติการทำงานในช่วงเวลานี้</div>';
@@ -59,6 +61,66 @@ XF.boot("history", function () {
         })
         .join("")}</tbody></table>`;
   }
+
+  // สรุปตามโซน / ถังปุ๋ย / รายวัน (ใช้ตรรกะชุดเดียวกับข้อความสรุปที่ส่งเข้า LINE)
+  function renderBreakdown() {
+    const box = $("#breakdown");
+    box.hidden = !rows.length;
+    if (!rows.length) return;
+    const [from, to] = currentRange();
+    const s = XF.report.summarize(rows, {
+      tzOffsetMin: -new Date().getTimezoneOffset(),
+      fromSec: from.getTime() / 1000,
+      toSec: to.getTime() / 1000,
+    });
+    const maxWater = Math.max(1, ...s.byDay.map((d) => d.waterL));
+    const failed = s.error ? `<span class="badge">ผิดพลาด ${fmt(s.error)}</span>` : "";
+
+    const zoneRows = s.byZone
+      .map(
+        (z) => `<tr><td>${esc(z.name)}</td><td class="r">${fmt(z.jobs)}</td><td class="r">${fmt(z.waterL, 0)}</td>
+          <td class="r">${fmt(z.fertMl, 0)}</td><td class="r">${z.errors ? fmt(z.errors) : "–"}</td></tr>`
+      )
+      .join("");
+    const tankRows = s.byTank
+      .map((t) => `<tr><td>${esc(t.name)}</td><td class="r">${fmt(t.jobs)}</td><td class="r">${fmt(t.fertMl, 0)}</td></tr>`)
+      .join("");
+    const dayBars =
+      s.byDay.length > 1
+        ? `<div class="card-title" style="margin:18px 0 8px">น้ำรายวัน (ลิตร)</div>
+        <div class="day-bars">${s.byDay
+          .map((d) => {
+            const [, mo, da] = d.key.split("-");
+            return `<div class="day-bar" title="${esc(d.key)}: ${fmt(d.jobs)} ครั้ง · น้ำ ${fmt(d.waterL, 0)} ลิตร · ปุ๋ย ${esc(XF.fmtVolume(d.fertMl))}">
+              <i style="height:${Math.max(d.waterL > 0 ? 4 : 0, (d.waterL / maxWater) * 100)}%"></i><b>${+da}/${+mo}</b></div>`;
+          })
+          .join("")}</div>`
+        : "";
+
+    box.innerHTML = `<div class="row between wrap"><div class="card-title" style="margin:0">สรุปตามโซนและถังปุ๋ย</div>${failed}</div>
+      <div class="table-wrap" style="margin-top:8px"><table class="data">
+        <thead><tr><th>โซน</th><th class="r">ครั้ง</th><th class="r">น้ำ (ลิตร)</th><th class="r">ปุ๋ย (มล.)</th><th class="r">ผิดพลาด</th></tr></thead>
+        <tbody>${zoneRows}</tbody></table></div>
+      ${
+        tankRows
+          ? `<div class="table-wrap" style="margin-top:14px"><table class="data">
+        <thead><tr><th>ถังปุ๋ย</th><th class="r">ครั้ง</th><th class="r">ปุ๋ยที่ใช้ (มล.)</th></tr></thead>
+        <tbody>${tankRows}</tbody></table></div>`
+          : ""
+      }
+      ${dayBars}`;
+  }
+
+  $("#sendLine").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const [from, to] = currentRange();
+    btn.disabled = true;
+    try {
+      await XF.sendLineReport({ from: Math.floor(from.getTime() / 1000), to: Math.floor(to.getTime() / 1000) });
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   function exportCsv() {
     if (!rows.length) return XF.toast("ไม่มีข้อมูลให้ดาวน์โหลด", true);

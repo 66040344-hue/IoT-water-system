@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#06121a">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>มุมมองผู้เข้าชม · XactFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <main class="page no-nav view-only" aria-readonly="true">
+    <!-- แถวบน: สภาพอากาศ (ซ้าย) + เซนเซอร์ในแปลง (ขวา) -->
+    <div class="home-top">
+      <section class="hero">
+        <div class="hero-top">
+          <span class="farm-pill" id="farmPill"></span>
+          <span class="hero-date" id="today"></span>
+        </div>
+        <div class="hero-greet" id="greet"></div>
+        <div class="hero-temp" id="wxNow">–<small>°C</small></div>
+        <div class="hero-chips" id="wxChips"></div>
+      </section>
+
+      <section class="home-env" aria-label="สภาพแวดล้อมในแปลง">
+        <h2 class="section-title">สภาพแวดล้อมในแปลง</h2>
+        <div class="env-grid" id="env" aria-busy="true">
+          <div class="card"><div class="skeleton sk-block" style="height:46px;width:100%"></div></div>
+          <div class="card"><div class="skeleton sk-block" style="height:46px;width:100%"></div></div>
+          <div class="card"><div class="skeleton sk-block" style="height:46px;width:100%"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- แถวสอง: ยอดวันนี้ + งานถัดไป -->
+    <div class="home-mid">
+      <section>
+        <h2 class="section-title">การให้น้ำและปุ๋ยวันนี้</h2>
+        <div class="grid cols-2" id="todayTotals">
+          <div class="card"><span class="skeleton sk-line"></span><span class="skeleton sk-line lg"></span></div>
+          <div class="card"><span class="skeleton sk-line"></span><span class="skeleton sk-line lg"></span></div>
+        </div>
+      </section>
+      <section>
+        <div class="row between">
+          <h2 class="section-title">รายการทำงานถัดไป</h2>
+          
+        </div>
+        <div class="card"><div class="run-list" id="upcoming"></div></div>
+      </section>
+    </div>
+
+    <h2 class="section-title">ผังระบบและสถานะอุปกรณ์</h2>
+    <div class="card dg-card">
+      <div id="device"></div>
+      <div class="dg-scroll" tabindex="0" aria-label="ผังระบบ เลื่อนซ้ายขวาเพื่อดูทั้งหมด">
+        <div id="diagram"></div>
+      </div>
+      <div class="dg-legend">
+        <span><i class="lg-water"></i>น้ำ</span>
+        <span><i class="lg-fert"></i>ปุ๋ย</span>
+        <span><i class="lg-mix"></i>น้ำผสมปุ๋ย</span>
+        <span><i class="lg-valve"></i>วาล์วไฟฟ้า</span>
+        <span><i class="lg-manual"></i>วาล์วมือ</span>
+      </div>
+      <div class="device-grid" id="deviceChips"></div>
+    </div>
+
+    <!-- แถวล่าง: แผนที่ + พยากรณ์ -->
+    <div class="home-bottom">
+      <section>
+        <h2 class="section-title">แปลงจริง</h2>
+        <div class="card">
+          <div id="farmMap" class="farm-map"></div>
+          <div id="farmInfo" style="margin-top:10px"></div>
+        </div>
+      </section>
+      <section>
+        <h2 class="section-title">พยากรณ์อากาศ</h2>
+        <div class="card"><div id="forecast" class="muted small">กำลังโหลด…</div></div>
+      </section>
+    </div>
+  </main>
+
+  <script>window.XF_PAGE = "view";</script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/store.js"></script>
+  <script defer src="js/app.js"></script>
+  <script defer src="js/demo.js"></script>
+  <script defer src="vendor/leaflet/leaflet.js"></script>
+  <script defer src="js/system-diagram.js"></script>
+  <script defer src="js/farm-view.js"></script>
+  <script defer src="js/pages/home.js"></script>
+</body>
+
+</html>

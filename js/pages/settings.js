@@ -47,14 +47,14 @@ XF.boot("settings", function () {
   function renderAccount(members) {
     $("#accName").value = XF.user.name;
     $("#accEmail").value = XF.user.email;
-    $("#accRole").value = XF.isOwner ? "เจ้าของสวน" : "ผู้ใช้งาน";
+    $("#accRole").value = XF.isOwner ? "เจ้าของสวน" : XF.ROLE_LABELS[XF.role] || "ผู้ใช้งาน";
     $("#accDevice").value = XF.deviceId;
 
     const list = Object.keys(members || {}).map((uid) => ({ uid, ...members[uid] }));
     list.sort((a, b) => (a.joined || 0) - (b.joined || 0));
     $("#members").innerHTML = list
       .map((m) => {
-        const role = m.role === "device" ? "ตู้ควบคุม" : m.uid === ownerUid ? "เจ้าของสวน" : "ผู้ใช้งาน";
+        const role = m.uid === ownerUid ? "เจ้าของสวน" : XF.ROLE_LABELS[m.role] || "ผู้ใช้งาน";
         const removable = XF.isOwner && m.uid !== XF.user.uid && m.role !== "device";
         return `<div class="list-item"><div class="grow"><b>${esc(m.name || "–")}</b><div class="small muted">${esc(m.email || "")}</div></div>
           <span class="badge ${m.uid === ownerUid ? "on" : "soft"}">${role}</span>
@@ -75,6 +75,7 @@ XF.boot("settings", function () {
       await store.setName(name);
       await store.set(`/members/${XF.deviceId}/${XF.user.uid}/name`, name);
       XF.user.name = name;
+      XF.saveSession();
     }, "บันทึกชื่อแล้ว");
   });
   $("#accLogout").addEventListener("click", () => store.signOut());
@@ -213,23 +214,175 @@ XF.boot("settings", function () {
     if (await XF.run(() => store.update(XF.root + "/farm", farm), "บันทึกตำแหน่งสวนแล้ว")) XF.farmMap.finishDrawing();
   });
 
+  // ---------------------------------------------------------------- LINE แจ้งเตือน/สรุปผล
+  // ค่าเริ่มต้นต้องตรงกับ DEFAULT_PREFS ใน functions/lib/alerts.js
+  const NOTIFY_DEFAULTS = { offline: true, offline_min: 10, hardware: true, job_error: true, job_done: false };
+  const NOTIFY_ITEMS = [
+    ["offline", "อุปกรณ์ออฟไลน์", "แจ้งเมื่อตู้ควบคุมขาดการเชื่อมต่อนานเกินกำหนด และแจ้งอีกครั้งเมื่อกลับมา"],
+    ["hardware", "ฮาร์ดแวร์ผิดปกติ", "ESP32 ติดต่อ STM32 ไม่ได้ หรือยังไม่ได้เวลาจากอินเทอร์เน็ต (ตารางเวลาไม่ทำงาน)"],
+    ["job_error", "งานให้น้ำ/ปุ๋ยผิดพลาด", "เช่น flow meter ไม่ขยับระหว่างจ่ายปุ๋ย พร้อมสาเหตุ"],
+    ["job_done", "งานเสร็จเรียบร้อย", "แจ้งทุกครั้งที่ให้น้ำ/ปุ๋ยเสร็จ (ข้อความจะเยอะ ปิดไว้เป็นค่าเริ่มต้น)"],
+  ];
+  let lineStatus = null;
+  let notifyKey = null;
+
+  function renderNotifyPrefs() {
+    const prefs = { ...NOTIFY_DEFAULTS, ...(down.notify || {}) };
+    const editable = XF.isOwner || XF.isAdmin;
+    $("#notifyPrefs").innerHTML =
+      NOTIFY_ITEMS.map(
+        ([key, title, hint]) => `<div class="pref-row"><div><div style="font-weight:500">${title}</div><div class="small muted">${hint}</div></div>
+          <label class="switch"><input type="checkbox" data-notify="${key}" aria-label="${title}" ${prefs[key] ? "checked" : ""} ${editable ? "" : "disabled"}><i></i></label></div>`
+      ).join("") +
+      `<div class="pref-row"><div><div style="font-weight:500">นับว่าออฟไลน์เมื่อขาดการเชื่อมต่อนาน</div>
+        <div class="small muted">ตั้งนานขึ้นถ้าสัญญาณที่สวนไม่ค่อยเสถียร จะได้ไม่เตือนบ่อย (3–1,440 นาที)</div></div>
+        <label class="field" style="width:110px"><input type="number" min="3" max="1440" data-notify-min value="${prefs.offline_min}" ${editable ? "" : "disabled"} aria-label="นาที"></label></div>`;
+    $("#notifyHint").textContent = editable ? "" : "เฉพาะเจ้าของสวนที่เปลี่ยนการตั้งค่าแจ้งเตือนได้";
+    $$("[data-notify]").forEach((input) =>
+      input.addEventListener("change", () => XF.run(() => store.update(downPath + "/notify", { [input.dataset.notify]: input.checked }), "บันทึกการแจ้งเตือนแล้ว"))
+    );
+    const minInput = $("[data-notify-min]");
+    minInput.addEventListener("change", () => {
+      const v = Math.min(1440, Math.max(3, Math.round(num(minInput.value, 10))));
+      minInput.value = v;
+      XF.run(() => store.update(downPath + "/notify", { offline_min: v }), "บันทึกการแจ้งเตือนแล้ว");
+    });
+  }
+
+  function renderLine() {
+    const st = lineStatus;
+    if (!st) return;
+    const intro = $("#lineIntro");
+    if (st.demo) intro.textContent = "โหมดสาธิตไม่เชื่อมต่อ LINE จริง หน้านี้แสดงตัวอย่างเท่านั้น";
+    else if (!st.configured) intro.textContent = "ยังไม่ได้ตั้งค่า LINE ฝั่งเซิร์ฟเวอร์ ให้ผู้ดูแลระบบทำตามคู่มือหัวข้อ \"8. แจ้งเตือนและสรุปผลทาง LINE\"";
+    else if (!st.recipients.length) intro.textContent = "ยังไม่มีบัญชี LINE ที่เชื่อมไว้ กด \"เพิ่มบัญชี LINE\" แล้วทำตามขั้นตอน";
+    else intro.textContent = "บัญชีเหล่านี้จะได้รับแจ้งเตือนเมื่อมีปัญหา และขอสรุปผลได้โดยพิมพ์ในแชท LINE";
+
+    $("#lineRecipients").innerHTML = st.recipients
+      .map(
+        (r) => `<div class="list-item"><div class="grow"><b>${esc(r.name)}</b>${r.mine ? ' <span class="badge on">บัญชีของคุณ</span>' : ""}
+          <div class="small muted">เชื่อมเมื่อ ${r.linked ? XF.fmtDate(r.linked * 1000, { day: "numeric", month: "short", year: "numeric" }) : "–"}</div></div>
+          ${r.removable ? `<button class="btn ghost sm" data-unlink="${esc(r.key)}">ลบ</button>` : ""}</div>`
+      )
+      .join("");
+    $$("[data-unlink]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        if (!confirm("เลิกส่งแจ้งเตือนไปที่บัญชี LINE นี้?")) return;
+        if (await XF.run(() => XF.lineCall("lineUnlink", { key: btn.dataset.unlink }), "ลบบัญชี LINE แล้ว")) loadLine();
+      })
+    );
+    const ready = st.configured || st.demo;
+    $("#lineLink").disabled = !ready;
+    $("#lineTest").disabled = !ready || !st.recipients.length;
+    $$("[data-line-report]").forEach((b) => (b.disabled = !ready || !st.recipients.length));
+  }
+
+  async function loadLine() {
+    try {
+      lineStatus = await XF.lineCall("lineStatus");
+    } catch (err) {
+      console.error(err);
+      lineStatus = null;
+      $("#lineIntro").textContent = "เชื่อมต่อฟังก์ชัน LINE ไม่ได้ (ยังไม่ได้ deploy Cloud Functions หรือไม่มีสิทธิ์)";
+      return;
+    }
+    renderLine();
+  }
+
+  function openLinkDialog() {
+    const modal = XF.modal(`<h2>เพิ่มบัญชี LINE</h2><div id="linkBody"><div class="empty">กำลังขอรหัส…</div></div>
+      <div class="form-actions"><button class="btn ghost" data-close>ปิด</button></div>`);
+    let timer = null;
+    const stop = () => clearInterval(timer);
+    const knownKeys = new Set((lineStatus ? lineStatus.recipients : []).map((r) => r.key));
+
+    XF.lineCall("lineCreateLinkCode")
+      .then((res) => {
+        const bot = lineStatus && lineStatus.botUrl;
+        modal.el.querySelector("#linkBody").innerHTML = `
+          <ol class="line-steps">
+            <li>${bot ? `เพิ่มเพื่อน LINE ของระบบ: <a href="${esc(bot)}" target="_blank" rel="noopener">กดที่นี่</a>` : "เพิ่มเพื่อน LINE Official Account ของระบบ (สอบถามผู้ดูแลระบบ)"}</li>
+            <li>พิมพ์ข้อความนี้ในแชท LINE นั้น</li>
+          </ol>
+          <div class="line-code"><b>ผูก ${esc(res.code)}</b><span class="small muted">ใช้ได้ ${Math.round(res.expiresInSec / 60)} นาที · หน้านี้จะอัปเดตเองเมื่อเชื่อมสำเร็จ</span></div>`;
+        let ticks = 0;
+        timer = setInterval(async () => {
+          // หน้าต่างถูกปิดแล้วหรือรอนานเกินอายุรหัส: หยุดถาม
+          if (++ticks > 200 || !modal.el.isConnected) return stop();
+          try {
+            const st = await XF.lineCall("lineStatus");
+            if (st.recipients.some((r) => !knownKeys.has(r.key))) {
+              stop();
+              lineStatus = st;
+              renderLine();
+              modal.close();
+              XF.toast("เชื่อมบัญชี LINE สำเร็จ");
+            }
+          } catch (err) {
+            /* ลองใหม่รอบหน้า */
+          }
+        }, 3000);
+      })
+      .catch((err) => {
+        modal.el.querySelector("#linkBody").innerHTML = `<div class="notice red">${esc(err.message || "ขอรหัสไม่สำเร็จ")}</div>`;
+      });
+  }
+
+  $("#lineLink").addEventListener("click", openLinkDialog);
+  $("#lineTest").addEventListener("click", async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      const res = await XF.lineCall("lineTest");
+      XF.toast(res.demo ? "โหมดสาธิต: ไม่ได้ส่งข้อความ LINE จริง" : `ส่งข้อความทดสอบแล้ว (${res.sent} บัญชี)`);
+    } catch (err) {
+      XF.toast(err.message || "ส่งไม่สำเร็จ", true);
+    }
+    renderLine();
+  });
+  $$("[data-line-report]").forEach((btn) =>
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      await XF.sendLineReport({ days: +btn.dataset.lineReport });
+      renderLine();
+    })
+  );
+
   // ---------------------------------------------------------------- ข้อมูล
   store.watch(downPath, (v) => {
     down = v || {};
     fillDownForms();
     renderZones();
     renderTanks();
+    // วาดใหม่เฉพาะเมื่อค่าแจ้งเตือนเปลี่ยน (กันช่องตัวเลขที่กำลังพิมพ์หลุดโฟกัส)
+    const key = JSON.stringify(down.notify || null);
+    if (key !== notifyKey) {
+      notifyKey = key;
+      renderNotifyPrefs();
+    }
   });
-  store.watch(XF.root + "/farm", (v) => {
-    // โหลดครั้งแรกเท่านั้น เพื่อไม่ให้ทับกรอบที่กำลังวาดค้างอยู่
-    if (farmLoaded) return;
-    farmLoaded = true;
-    XF.farmMap.setFarm(v || XF.DEFAULT_FARM);
-  });
-  store.get("/owners/" + XF.deviceId).then((uid) => {
-    ownerUid = uid;
-    store.watch("/members/" + XF.deviceId, renderAccount);
-  });
+  loadLine();
+  // ใช้ค่าจริงจากเซิร์ฟเวอร์เท่านั้น (cache: false) เพราะรับแค่ครั้งแรก ถ้าเป็นค่าเก่าจะบันทึกทับของใหม่
+  store.watch(
+    XF.root + "/farm",
+    (v) => {
+      // โหลดครั้งแรกเท่านั้น เพื่อไม่ให้ทับกรอบที่กำลังวาดค้างอยู่
+      if (farmLoaded) return;
+      farmLoaded = true;
+      XF.farmMap.setFarm(v || XF.DEFAULT_FARM);
+    },
+    { cache: false }
+  );
+  ownerUid = XF.ownerUid;
+  renderAccount(null);
+  // รายชื่อสมาชิกอ่านได้เฉพาะเจ้าของสวน/ผู้ดูแล (กฎความปลอดภัย)
+  if (XF.isOwner || XF.isAdmin) store.watch("/members/" + XF.deviceId, renderAccount);
+  else {
+    $("main").classList.add("ro");
+    $("main").insertAdjacentHTML(
+      "afterbegin",
+      '<div class="notice" style="margin-bottom:12px">เฉพาะเจ้าของสวนที่แก้ค่าระบบได้ บัญชีของคุณดูได้และใช้หน้าควบคุม ตั้งเวลา และคำนวณได้ตามปกติ</div>'
+    );
+  }
   XF.watchUp((up, online) => {
     const s = up.sensors || {};
     $("#adcRaw").textContent = online && s.adc != null ? `(ค่า ADC ปัจจุบัน ${s.adc})` : "";

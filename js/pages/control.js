@@ -32,9 +32,22 @@ XF.boot("control", function () {
 
   function renderMode() {
     const m = mode();
-    $$("#modeSeg button").forEach((b) => b.classList.toggle("active", b.dataset.mode === m));
+    $$("#modeSeg button").forEach((b) => {
+      const active = b.dataset.mode === m;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-pressed", active);
+    });
     $("#modeHint").textContent =
       m === "manual" ? "เปิด/ปิดอุปกรณ์เองได้ ตารางเวลาจะไม่ทำงาน" : "ทำงานตามตารางเวลา สวิตช์อุปกรณ์ถูกล็อก";
+    renderState();
+  }
+
+  // สถานะรวมบนแถบสั่งการ: ออฟไลน์ / กำลังทำงาน / ว่าง
+  function renderState() {
+    const el = $("#ctlState");
+    const [cls, text] = !online ? ["off", "ออฟไลน์"] : running() ? ["run", "กำลังทำงาน"] : ["idle", "พร้อม"];
+    el.className = "ctl-state " + cls;
+    el.textContent = text;
   }
 
   // ---------------------------------------------------------------- งานที่กำลังทำ
@@ -42,23 +55,27 @@ XF.boot("control", function () {
     const job = up.job || {};
     const card = $("#jobCard");
     card.hidden = !job.running;
+    renderState();
     if (!job.running) return;
 
     const waterPct = job.water_target_l > 0 ? Math.min(100, (job.water_done_l / job.water_target_l) * 100) : 0;
     const fertPct = job.fert_target_ml > 0 ? Math.min(100, (job.fert_done_ml / job.fert_target_ml) * 100) : 0;
     card.innerHTML = `
       <div class="row between wrap">
-        <div><div class="card-title" style="margin-bottom:2px">กำลังทำงาน: ${esc(job.zone_name || job.zone)}</div>
-          <div class="small muted">ขั้นตอน: ${esc(XF.STEP_LABELS[job.step] || job.step)} · ${esc(XF.SOURCE_LABELS[job.source] || job.source)}
-            · เหลือประมาณ ${XF.fmtDuration(job.eta_s)}${job.queued ? ` · รอคิวอีก ${job.queued} งาน` : ""}</div></div>
-        <button class="btn danger" id="stopJob">หยุดงาน</button>
+        <div><div class="job-kicker">กำลังทำงาน</div>
+          <div class="job-zone">${esc(job.zone_name || job.zone)}</div>
+          <div class="small muted">${esc(XF.STEP_LABELS[job.step] || job.step)} · ${esc(XF.SOURCE_LABELS[job.source] || job.source)}
+            · เหลือประมาณ <b>${XF.fmtDuration(job.eta_s)}</b>${job.queued ? ` · รอคิวอีก ${job.queued} งาน` : ""}</div></div>
+        <button class="btn danger" id="stopJob">หยุดงานนี้</button>
       </div>
-      <div style="margin-top:14px"><div class="row between small"><span>น้ำ</span><span>${fmt(job.water_done_l, 0)} / ${fmt(job.water_target_l, 0)} ลิตร</span></div>
-        <div class="progress blue"><i style="width:${waterPct}%"></i></div></div>
-      ${job.fert_target_ml > 0
-        ? `<div style="margin-top:10px"><div class="row between small"><span>ปุ๋ย (${esc(tankName(job.tank))})</span><span>${fmt(job.fert_done_ml, 0)} / ${fmt(job.fert_target_ml, 0)} มล.</span></div>
-        <div class="progress orange"><i style="width:${fertPct}%"></i></div></div>`
-        : ""}`;
+      <div class="job-bars">
+        <div><div class="row between small"><span>น้ำ</span><span><b>${fmt(job.water_done_l, 0)}</b> / ${fmt(job.water_target_l, 0)} ลิตร</span></div>
+          <div class="progress blue"><i style="width:${waterPct}%"></i></div></div>
+        ${job.fert_target_ml > 0
+          ? `<div><div class="row between small"><span>ปุ๋ย (${esc(tankName(job.tank))})</span><span><b>${fmt(job.fert_done_ml, 0)}</b> / ${fmt(job.fert_target_ml, 0)} มล.</span></div>
+          <div class="progress orange"><i style="width:${fertPct}%"></i></div></div>`
+          : ""}
+      </div>`;
     $("#stopJob").addEventListener("click", () => {
       if (confirm("หยุดงานที่กำลังทำและยกเลิกคิวทั้งหมด?")) XF.run(() => XF.sendCmd({ type: "stop" }), "ส่งคำสั่งหยุดแล้ว");
     });
@@ -66,25 +83,44 @@ XF.boot("control", function () {
 
   // ---------------------------------------------------------------- การ์ดโซน: กำหนดน้ำ/ปุ๋ย เลือกถัง แล้วสั่งงาน
   function tankPicker(zoneId, z) {
-    return `<div class="tank-opts" role="radiogroup" aria-label="ถังปุ๋ย">${[1, 2, 3]
+    return `<div class="ctl-tanks" role="radiogroup" aria-label="ถังปุ๋ย">${[1, 2, 3]
       .map((i) => {
         const t = tankInfo(i);
         const picture = t.product
           ? `<img src="${XF.productImage(t.product)}" alt="" loading="lazy">`
-          : `<div class="tank-noimg">T${i}</div>`;
-        return `<button type="button" class="tank-opt ${z.tank === i ? "active" : ""}" role="radio" aria-checked="${z.tank === i}"
+          : `<span class="ctl-tank-noimg">T${i}</span>`;
+        return `<button type="button" class="ctl-tank ${z.tank === i ? "active" : ""}" role="radio" aria-checked="${z.tank === i}"
             data-tank="${i}" data-zone="${esc(zoneId)}" ${z.fert_enabled ? "" : "disabled"}>
-          ${picture}<b>${esc(tankName(i))}</b><span>${fmt(num(t.n))}-${fmt(num(t.p))}-${fmt(num(t.k))}</span></button>`;
+          ${picture}<span class="ctl-tank-txt"><b>${esc(tankName(i))}</b><small>${fmt(num(t.n))}-${fmt(num(t.p))}-${fmt(num(t.k))}</small></span></button>`;
       })
       .join("")}</div>`;
   }
 
+  // ช่องกรอกตัวเลขแบบมีปุ่ม − / + (กดง่ายบนมือถือ)
+  function stepper(field, label, unit, value) {
+    return `<div class="field ctl-step-field"><span>${label}</span>
+      <div class="ctl-stepper">
+        <button type="button" data-step="-1" data-for="${field}" aria-label="ลด${label}">−</button>
+        <input type="number" min="0" step="1" inputmode="decimal" data-field="${field}" value="${num(value)}" aria-label="${label}">
+        <em>${unit}</em>
+        <button type="button" data-step="1" data-for="${field}" aria-label="เพิ่ม${label}">+</button>
+      </div></div>`;
+  }
+
+  // สรุปผลลัพธ์รวมของโซน เป็นตัวเลขใหญ่ 3 ช่อง
   function zoneSummary(id) {
     const z = zoneView(id);
     const fertPlan = XF.zonePlan(z, down.settings, true);
     const waterPlan = XF.zonePlan(z, down.settings, false);
-    return `<span>น้ำรวม <b>${fmt(fertPlan.waterL, 0)} ลิตร</b> · ประมาณ ${XF.fmtDuration(waterPlan.seconds)}</span>
-      <span>${fertPlan.fertMl > 0 ? `ปุ๋ยรวม <b>${XF.fmtVolume(fertPlan.fertMl)}</b> จาก${esc(tankName(z.tank))}` : "ไม่ให้ปุ๋ย"}</span>`;
+    return `<div><small>น้ำรวม</small><b>${fmt(fertPlan.waterL, 0)}</b><em>ลิตร</em></div>
+      <div><small>ใช้เวลา</small><b>${XF.fmtDuration(waterPlan.seconds)}</b></div>
+      <div><small>${fertPlan.fertMl > 0 ? "ปุ๋ยรวม · " + esc(tankName(z.tank)) : "ปุ๋ย"}</small>${
+        fertPlan.fertMl > 0 ? `<b>${XF.fmtVolume(fertPlan.fertMl)}</b>` : `<b class="muted">ไม่ให้</b>`
+      }</div>
+      <p class="zone-formula">ค่าที่กรอกเป็นต่อต้น แล้วคูณจำนวนต้นของโซน (${fmt(z.trees)} ต้น):
+        น้ำ ${fmt(z.water_per_tree_l, 0)} × ${fmt(z.trees)} = <b>${fmt(fertPlan.waterL, 0)} ลิตร</b>${
+          fertPlan.fertMl > 0 ? ` · ปุ๋ย ${fmt(z.fert_per_tree_ml, 0)} × ${fmt(z.trees)} = <b>${XF.fmtVolume(fertPlan.fertMl)}</b>` : ""
+        }</p>`;
   }
 
   // อัปเดตเฉพาะส่วนที่เปลี่ยนตามค่าที่พิมพ์ โดยไม่สร้างการ์ดใหม่ (ช่องที่กำลังพิมพ์จึงไม่หลุดโฟกัส)
@@ -94,11 +130,12 @@ XF.boot("control", function () {
     const z = zoneView(id);
     const plan = XF.zonePlan(z, down.settings, true);
     $(".zone-summary", card).innerHTML = zoneSummary(id);
-    $("[data-save]", card).hidden = !drafts[id];
+    $(".ctl-draft", card).hidden = !drafts[id];
     $('[data-run][data-fert="1"]', card).disabled = plan.fertMl <= 0;
     $('[data-run][data-fert="0"]', card).disabled = plan.waterL <= 0;
-    $('[data-field="fert_per_tree_ml"]', card).disabled = !z.fert_enabled;
-    $$(".tank-opt", card).forEach((b) => {
+    $$(".ctl-fert", card).forEach((el) => el.classList.toggle("off", !z.fert_enabled));
+    $$('[data-field="fert_per_tree_ml"], [data-for="fert_per_tree_ml"]', card).forEach((el) => (el.disabled = !z.fert_enabled));
+    $$(".ctl-tank", card).forEach((b) => {
       const active = +b.dataset.tank === z.tank;
       b.classList.toggle("active", active);
       b.setAttribute("aria-checked", active);
@@ -141,25 +178,30 @@ XF.boot("control", function () {
     box.innerHTML = zones
       .map((saved) => {
         const z = zoneView(saved.id);
-        return `<div class="card zone-card" data-zone="${esc(saved.id)}">
-          <div class="row between">
-            <div><div class="card-title" style="margin:0">${esc(z.name)}</div><div class="small muted">${fmt(z.trees)} ต้น</div></div>
-            <label class="row small" style="gap:8px">ให้ปุ๋ย
+        return `<article class="card zone-card" data-zone="${esc(saved.id)}">
+          <header class="ctl-zone-head">
+            <div><h3>${esc(z.name)}</h3><div class="small muted">${fmt(z.trees)} ต้น</div></div>
+            <label class="ctl-fert-toggle">ให้ปุ๋ย
               <span class="switch"><input type="checkbox" data-field="fert_enabled" ${z.fert_enabled ? "checked" : ""}><i></i></span></label>
+          </header>
+          <div class="ctl-steps">
+            ${stepper("water_per_tree_l", "น้ำต่อต้น", "ลิตร", z.water_per_tree_l)}
+            <div class="ctl-fert">${stepper("fert_per_tree_ml", "ปุ๋ยต่อต้น", "มล.", z.fert_per_tree_ml)}</div>
           </div>
-          <div class="form-grid" style="margin-top:12px">
-            <label class="field"><span>น้ำต่อต้นต่อครั้ง (ลิตร)</span><input type="number" min="0" step="1" inputmode="decimal" data-field="water_per_tree_l" value="${num(z.water_per_tree_l)}"></label>
-            <label class="field"><span>ปุ๋ยต่อต้นต่อครั้ง (มล.)</span><input type="number" min="0" step="1" inputmode="decimal" data-field="fert_per_tree_ml" value="${num(z.fert_per_tree_ml)}"></label>
+          <div class="ctl-fert">
+            <div class="ctl-label">ถังปุ๋ยที่ใช้</div>
+            ${tankPicker(saved.id, z)}
           </div>
-          <div class="field" style="margin-top:12px"><span>ปุ๋ยที่ใช้ (เลือกถัง)</span>${tankPicker(saved.id, z)}</div>
           <div class="zone-summary"></div>
-          <div class="row wrap zone-actions">
-            <button class="btn ghost sm" data-save hidden>บันทึกค่า</button>
-            <span style="flex:1"></span>
-            <button class="btn ghost" data-run data-fert="0">ให้น้ำ</button>
-            <button class="btn" data-run data-fert="1">ให้น้ำ + ปุ๋ย</button>
+          <div class="ctl-draft" hidden>
+            <span>มีค่าที่ยังไม่บันทึก</span>
+            <button class="btn ghost sm" data-save>บันทึกค่า</button>
           </div>
-        </div>`;
+          <div class="ctl-actions">
+            <button class="btn act-water" data-run data-fert="0">${XF.icon("drop")}<span>น้ำอย่างเดียว</span></button>
+            <button class="btn act-fert" data-run data-fert="1">${XF.icon("drop")}${XF.icon("leaf")}<span>น้ำ + ปุ๋ย</span></button>
+          </div>
+        </article>`;
       })
       .join("");
 
@@ -168,7 +210,15 @@ XF.boot("control", function () {
       $$("[data-field]", card).forEach((input) =>
         input.addEventListener("input", () => setDraft(id, input.dataset.field, input.type === "checkbox" ? input.checked : num(input.value)))
       );
-      $$(".tank-opt", card).forEach((btn) => btn.addEventListener("click", () => setDraft(id, "tank", +btn.dataset.tank)));
+      $$("[data-step]", card).forEach((btn) =>
+        btn.addEventListener("click", () => {
+          const input = $(`[data-field="${btn.dataset.for}"]`, card);
+          const next = Math.max(0, num(input.value) + +btn.dataset.step);
+          input.value = next;
+          setDraft(id, btn.dataset.for, next);
+        })
+      );
+      $$(".ctl-tank", card).forEach((btn) => btn.addEventListener("click", () => setDraft(id, "tank", +btn.dataset.tank)));
       $("[data-save]", card).addEventListener("click", async () => {
         if (await saveZone(id)) XF.toast("บันทึกค่าของโซนแล้ว");
       });
@@ -197,18 +247,21 @@ XF.boot("control", function () {
   function renderRelays() {
     const desired = (down.control || {}).relays || {};
     const locked = mode() !== "manual" || running();
+    const onCount = XF.RELAYS.filter((r) => online && XF.relayOn(up, r)).length;
+    $("#relayBadge").textContent = `เปิดอยู่ ${onCount}/${XF.RELAYS.length}`;
+    $("#relayBadge").className = "badge " + (onCount ? "on" : "soft");
     $("#relays").innerHTML = XF.RELAYS.map((r) => {
       const on = online && XF.relayOn(up, r);
-      return `<div class="card relay-card ${on ? "on" : ""}">
-        <div class="relay-ico">${r.tag}</div>
-        <div class="grow"><div class="relay-name">${esc(r.name)}</div>
-          <span class="badge ${on ? "on" : "soft"}">${on ? "ON" : "OFF"}</span></div>
+      return `<div class="ctl-relay ${on ? "on" : ""} ${locked ? "locked" : ""}">
+        <span class="ctl-relay-tag">${r.tag}</span>
+        <span class="ctl-relay-name">${esc(r.name)}</span>
+        <span class="ctl-relay-state">${on ? "ON" : "OFF"}</span>
         <label class="switch"><input type="checkbox" data-relay="${r.key}" aria-label="${esc(r.name)}" ${desired[r.key] ? "checked" : ""} ${locked ? "disabled" : ""}><i></i></label>
       </div>`;
     }).join("");
     $("#relayHint").textContent = running()
-      ? "กำลังทำงานตามคำสั่ง สวิตช์ถูกล็อกจนกว่างานจะจบ"
-      : mode() === "manual" ? "" : "เปลี่ยนเป็นโหมด Manual เพื่อเปิด/ปิดอุปกรณ์ทีละตัว";
+      ? "🔒 กำลังทำงานตามคำสั่ง สวิตช์ถูกล็อกจนกว่างานจะจบ"
+      : mode() === "manual" ? "เปิด/ปิดทีละตัวได้ ระวังอย่าให้ปั๊มเดินโดยไม่มีน้ำ" : "🔒 เปลี่ยนเป็นโหมด Manual เพื่อเปิด/ปิดอุปกรณ์ทีละตัว";
     $$("[data-relay]").forEach((input) =>
       input.addEventListener("change", () => XF.run(() => store.set(`${controlPath}/relays/${input.dataset.relay}`, input.checked)))
     );
@@ -218,8 +271,8 @@ XF.boot("control", function () {
     const s = up.sensors || {};
     $("#flows").innerHTML = [1, 2, 3]
       .map(
-        (i) => `<div class="card"><div class="stat-label">${esc(tankName(i))}</div>
-          <div class="num" style="font-size:1.7rem">${online ? fmt((s.flow_lpm || {})["f" + i], 2) : "–"}</div>
+        (i) => `<div class="ctl-flow"><div class="stat-label">${esc(tankName(i))}</div>
+          <div class="num">${online ? fmt((s.flow_lpm || {})["f" + i], 2) : "–"}</div>
           <div class="small muted">ลิตร/นาที</div>
           <div class="small muted">สะสม ${XF.fmtVolume((s.flow_ml || {})["f" + i] || 0)}</div></div>`
       )
@@ -259,6 +312,7 @@ XF.boot("control", function () {
     up = v;
     online = isOnline;
     renderAlerts();
+    renderState();
     renderJob();
     renderRelays();
     renderFlows();

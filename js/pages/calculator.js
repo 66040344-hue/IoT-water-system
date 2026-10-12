@@ -13,12 +13,28 @@ XF.boot("calc", function () {
   };
   const tankLabel = (i) => (((down.settings || {}).tanks || {})["t" + i] || {}).name || "ถัง " + i;
 
-  // การ์ดสูตรปุ๋ยที่เลือก + ตารางรูปให้เลือกสูตรอื่น
+  // ความใกล้เคียงกับสัดส่วน N:P:K เป้าหมาย (0-100%) จากระยะห่าง dist ใน XF.rankProducts
+  const matchOf = (p) => Math.max(0, Math.round((1 - p.dist / 0.8) * 100));
+  const matchInfo = (pct) =>
+    pct >= 90 ? ["ใกล้เคียงมาก", "on", "var(--green)"] : pct >= 70 ? ["ใกล้เคียง", "on", "var(--green)"] : pct >= 45 ? ["พอใช้ได้", "warn", "var(--orange)"] : ["ต่างจากเป้าหมาย", "", "var(--red)"];
+  const matchBadge = (p) => {
+    const pct = matchOf(p);
+    const [text, cls] = matchInfo(pct);
+    return `<span class="badge ${cls}">${pct}% · ${text}</span>`;
+  };
+  const matchBar = (p) => `<div class="match-bar"><i style="width:${matchOf(p)}%;background:${matchInfo(matchOf(p))[2]}"></i></div>`;
+  const tankNote = (p) => {
+    const held = tanksHolding(p.id);
+    return held.length
+      ? `<span style="color:var(--green-ink)">มีอยู่ใน${held.map((i) => esc(tankLabel(i))).join(", ")}</span>`
+      : '<span style="color:var(--orange-text)">ยังไม่มีในถังปุ๋ย ต้องเติมลงถังก่อนใช้</span>';
+  };
+
+  // การ์ดสูตรปุ๋ยที่เลือก + ปุ่มเปิดหน้าต่างเลือกสูตรอื่น
   function renderProductPicker() {
     const box = $("#productPicker");
     if (!box) return;
     const chosen = ranked.find((p) => p.id === selectedProduct);
-    const held = tanksHolding(chosen.id);
     const isBest = chosen.id === ranked[0].id;
     box.innerHTML = `
       <div class="reco">
@@ -26,28 +42,57 @@ XF.boot("calc", function () {
         <div>
           <span class="badge ${isBest ? "on" : "warn"}">${isBest ? "สูตรที่แนะนำ" : "สูตรที่เลือกเอง"}</span>
           <div class="reco-name">${esc(chosen.name)}</div>
-          <div class="small muted">N-P-K ${chosen.n}-${chosen.p}-${chosen.k}${isBest ? " · สัดส่วนใกล้เป้าหมายที่สุด" : ""}</div>
-          <div class="small" style="margin-top:4px">${
-            held.length
-              ? `<span style="color:var(--green-dark)">มีอยู่ใน${held.map((i) => esc(tankLabel(i))).join(", ")}</span>`
-              : '<span style="color:#b25a00">ยังไม่มีในถังปุ๋ย ต้องเติมลงถังก่อนใช้</span>'
-          }</div>
+          <div class="small muted">N-P-K ${chosen.n}-${chosen.p}-${chosen.k}</div>
+          <div style="margin-top:6px">${matchBadge(chosen)}</div>
+          <div class="small" style="margin-top:4px">${tankNote(chosen)}</div>
         </div>
       </div>
-      <div class="small muted" style="margin:12px 0 6px">เลือกสูตรอื่นได้ (เรียงจากใกล้เป้าหมายที่สุด)</div>
-      <div class="product-grid">${ranked
+      <button type="button" class="btn ghost block" id="moreProducts" style="margin-top:10px">เลือกสูตรปุ๋ยอื่น ๆ</button>`;
+    $("#moreProducts", box).addEventListener("click", openProductModal);
+  }
+
+  // หน้าต่างเลือกสูตร: รูปซ้าย รายละเอียดขวา กดเลือกแล้วต้องกดยืนยัน
+  function openProductModal() {
+    let pending = selectedProduct;
+    const r = result.rate;
+    const modal = XF.modal(`
+      <h2>เลือกสูตรปุ๋ย</h2>
+      <p class="small muted" style="margin:-8px 0 12px">เป้าหมาย N : P : K = <b>${r.N} : ${r.P} : ${r.K}</b> · เรียงจากใกล้เคียงที่สุด</p>
+      <div class="pick-list" id="pickList"></div>
+      <div class="pick-foot"><button class="btn ghost" data-close>ยกเลิก</button><button class="btn" id="pickConfirm" style="flex:1"></button></div>`);
+
+    function render() {
+      $("#pickList", modal.el).innerHTML = ranked
         .map(
-          (p, i) => `<button type="button" class="product ${p.id === selectedProduct ? "active" : ""}" data-product="${p.id}" aria-pressed="${p.id === selectedProduct}">
-            <img src="${XF.productImage(p.id)}" alt="" loading="lazy">${esc(p.name)}
-            ${i === 0 ? '<span class="product-flag">แนะนำ</span>' : ""}${tanksHolding(p.id).length ? '<span class="product-tank">ในถัง</span>' : ""}</button>`
+          (p, i) => `<button type="button" class="pick-row ${p.id === pending ? "active" : ""}" data-product="${p.id}" aria-pressed="${p.id === pending}">
+            <img src="${XF.productImage(p.id)}" alt="" loading="lazy">
+            <div class="pick-body">
+              <div class="pick-name">${esc(p.name)}${i === 0 ? ' <span class="badge on" style="min-width:0;padding:0 8px">แนะนำ</span>' : ""}</div>
+              <div class="small muted">N-P-K ${p.n}-${p.p}-${p.k}</div>
+              <div style="margin-top:6px">${matchBadge(p)}</div>
+              ${matchBar(p)}
+              <div class="small" style="margin-top:6px">${tankNote(p)}</div>
+            </div></button>`
         )
-        .join("")}</div>`;
-    $$("[data-product]", box).forEach((btn) =>
-      btn.addEventListener("click", () => {
-        selectedProduct = btn.dataset.product;
-        renderProductPicker();
-      })
-    );
+        .join("");
+      $$(".pick-row", modal.el).forEach((btn) =>
+        btn.addEventListener("click", () => {
+          pending = btn.dataset.product;
+          render();
+        })
+      );
+      const same = pending === selectedProduct;
+      const p = ranked.find((x) => x.id === pending);
+      const confirm = $("#pickConfirm", modal.el);
+      confirm.textContent = same ? "ใช้สูตรนี้อยู่แล้ว" : `ยืนยันใช้ ${p.name}`;
+      confirm.disabled = same;
+    }
+    render();
+    $("#pickConfirm", modal.el).addEventListener("click", () => {
+      selectedProduct = pending;
+      modal.close();
+      renderProductPicker();
+    });
   }
 
   const value = (id) => {
@@ -129,9 +174,9 @@ XF.boot("calc", function () {
     const pPct = Math.round((rate.P / r.totalRatio) * 100);
     const kPct = 100 - nPct - pPct;
     const vol = (ml) => (r.isStop ? "0 มล." : XF.fmtVolume(ml));
-    const list = (items) => `<ul style="padding-left:1.2rem">${items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`;
+    const list = (items) => `<ul class="result-list">${items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`;
     const group = (label, color, ml) =>
-      `<div class="card" style="border-top:3px solid ${color};text-align:center;padding:12px 6px"><div class="small muted">${label}</div>
+      `<div class="kpi group" style="border-top:3px solid ${color}"><div class="small muted">${label}</div>
         <b style="color:${color}">${vol(ml)}</b><div class="small muted">รวม ${vol(ml * treeCount)}</div></div>`;
 
     let html = `
@@ -149,35 +194,35 @@ XF.boot("calc", function () {
       html += `<div class="notice red" style="margin-top:14px"><b>ระงับการจ่ายปุ๋ยชั่วคราว</b>
         <div>เนื่องจากพบเงื่อนไขที่ไม่ปลอดภัยต่อระบบรากหรือต้นทุเรียน:</div>${list(r.stopReasons)}</div>`;
     } else {
-      html += `<div class="grid cols-2" style="margin-top:14px">
-          <div class="card"><div class="stat-label">ปุ๋ยน้ำรวมต่อต้น</div><div class="num" style="font-size:1.6rem;color:var(--orange)">${XF.fmtVolume(r.fertPerTreeMl)}</div></div>
-          <div class="card"><div class="stat-label">ปุ๋ยน้ำรวมทั้งแปลง (${fmt(treeCount)} ต้น)</div><div class="num" style="font-size:1.6rem;color:var(--orange)">${XF.fmtVolume(r.fertTotalMl)}</div></div>
-          <div class="card"><div class="stat-label">น้ำต่อต้น</div><div class="num" style="font-size:1.6rem;color:var(--blue)">${fmt(r.waterPerTreeL, 0)}<small>ลิตร</small></div></div>
-          <div class="card"><div class="stat-label">พื้นที่ทรงพุ่มต่อต้น / รวม</div><div class="num" style="font-size:1.6rem">${fmt(r.canopyArea, 1)}<small>m²</small></div>
+      html += `<div class="kpi-grid">
+          <div class="kpi main"><div class="stat-label">ปุ๋ยน้ำต่อต้น</div><div class="num">${XF.fmtVolume(r.fertPerTreeMl)}</div></div>
+          <div class="kpi"><div class="stat-label">ปุ๋ยน้ำทั้งแปลง (${fmt(treeCount)} ต้น)</div><div class="num" style="color:var(--orange-text)">${XF.fmtVolume(r.fertTotalMl)}</div></div>
+          <div class="kpi"><div class="stat-label">น้ำต่อต้น</div><div class="num" style="color:var(--blue-ink)">${fmt(r.waterPerTreeL, 0)}<small>ลิตร</small></div></div>
+          <div class="kpi"><div class="stat-label">พื้นที่ทรงพุ่ม ต่อต้น</div><div class="num">${fmt(r.canopyArea, 1)}<small>m²</small></div>
             <div class="small muted">รวม ${fmt(r.canopyArea * treeCount, 0)} m²</div></div>
         </div>`;
     }
 
-    html += `<div style="margin:16px 0 8px"><b>ปริมาณปุ๋ยน้ำสุทธิแยกกลุ่มธาตุ (ต่อต้น และรวมทั้งแปลง)</b></div>
-      <div class="grid cols-3">${group("กลุ่ม N ไนโตรเจน", "var(--green-dark)", r.perTree.N)}${group("กลุ่ม P ฟอสฟอรัส", "#c96a10", r.perTree.P)}${group("กลุ่ม K โพแทสเซียม", "var(--blue)", r.perTree.K)}</div>`;
+    html += `<div class="result-h">ปุ๋ยน้ำแยกกลุ่มธาตุ (ต่อต้น / รวมทั้งแปลง)</div>
+      <div class="kpi-grid three">${group("N ไนโตรเจน", "var(--brand-ink)", r.perTree.N)}${group("P ฟอสฟอรัส", "var(--orange-text)", r.perTree.P)}${group("K โพแทสเซียม", "var(--blue-ink)", r.perTree.K)}</div>`;
 
     if (!r.isStop) {
-      html += `<div style="margin:16px 0 8px"><b>ปุ๋ยที่ควรใช้</b></div><div id="productPicker"></div>`;
+      html += `<div class="result-h">ปุ๋ยที่ควรใช้</div><div id="productPicker"></div>`;
     }
-    if (hasSoil && r.soilDetails.length) html += `<div style="margin-top:14px"><b>การปรับตามผลวิเคราะห์ดิน</b>${list(r.soilDetails)}</div>`;
+    if (hasSoil && r.soilDetails.length) html += `<div class="result-h"><b>การปรับตามผลวิเคราะห์ดิน</b>${list(r.soilDetails)}</div>`;
     if (r.soilWarnings.length || r.advice.length) {
       html += `<div class="notice" style="margin-top:14px"><b>คำแนะนำและข้อควรระวัง</b>${list([...r.soilWarnings, ...r.advice])}</div>`;
     }
-    html += `<div style="margin-top:14px"><b>ข้อมูลประกอบการคำนวณ</b>${list([
+    html += `<div class="result-h"><b>ข้อมูลประกอบการคำนวณ</b>${list([
       `ระยะพืช: ${rate.label} (N:P:K = ${rate.N}:${rate.P}:${rate.K})`,
       `สภาพอากาศ: ${r.weatherDescription}`,
       `สภาพต้น: ${r.treeDescription}`,
       `ผลวิเคราะห์ดิน: ${hasSoil ? "นำมาประเมินและปรับแล้ว" : "ไม่ได้ระบุ (ใช้สัดส่วนมาตรฐาน)"}`,
     ])}</div>
-      <div class="row wrap no-print" style="margin-top:16px">
-        <button class="btn" id="applyBtn" style="flex:2;min-width:220px" ${r.isStop ? "disabled" : ""}>นำผลคำนวณไปตั้งค่าให้โซน</button>
-        <button class="btn ghost" id="printBtn" style="flex:1">พิมพ์รายงาน</button>
-        <button class="btn ghost" id="resetBtn" style="flex:1">คำนวณใหม่</button>
+      <div class="btn-row no-print">
+        <button class="btn" id="applyBtn" ${r.isStop ? "disabled" : ""}>นำผลไปตั้งค่าให้โซน</button>
+        <button class="btn ghost" id="printBtn">พิมพ์</button>
+        <button class="btn ghost" id="resetBtn">คำนวณใหม่</button>
       </div>`;
 
     const card = $("#resultCard");
