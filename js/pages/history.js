@@ -159,6 +159,11 @@ XF.boot("history", function () {
   $("#exportCsv").addEventListener("click", exportCsv);
 
   load();
-  // งานใหม่ที่เพิ่งจบจะปรากฏเองโดยไม่ต้องรีเฟรชหน้า
-  setInterval(() => $("#rangeTabs .active").dataset.days !== "0" && load(), 60000);
+  // งานใหม่ที่เพิ่งจบจะปรากฏเองโดยไม่ต้องรีเฟรชหน้า: โหลดซ้ำเฉพาะตอนสถานะงานเปลี่ยนจากกำลังทำ -> ว่าง (ไม่ดึงทุก 60 วินาที)
+  let wasRunning = null;
+  XF.watchUp((up) => {
+    const running = !!(up.job && up.job.running);
+    if (wasRunning === true && !running && $("#rangeTabs .active").dataset.days !== "0") setTimeout(load, 3000);
+    wasRunning = running;
+  });
 });

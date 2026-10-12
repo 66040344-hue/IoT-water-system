@@ -1,9 +1,9 @@
 // Service Worker: เก็บโครงหน้าเว็บ สคริปต์ และฟอนต์ไว้ในเครื่อง เปิดซ้ำเร็วและเปิดโครงหน้าได้แม้เน็ตหลุด
 // ข้อมูลสด (Firebase, Open-Meteo) ไม่ผ่าน SW จึงไม่ถูกแคช ถ้าแก้ไฟล์ในเว็บให้เปลี่ยน VERSION ด้านล่างทุกครั้งที่ deploy
-const VERSION = "xf-v12";
+const VERSION = "xf-v22";
 const SHELL = [
   "./", "index.html", "view.html", "login.html", "control.html", "calculator.html", "schedule.html", "history.html", "settings.html", "weather.html",
-  "css/style.css", "js/theme.js", "js/config.js", "js/store.js", "js/app.js", "icon.svg",
+  "css/style.css", "js/theme.js", "js/config.js", "js/store.js", "js/app.js", "js/products.js", "icon.svg",
 ];
 const HOSTS = ["www.gstatic.com", "fonts.googleapis.com", "fonts.gstatic.com"];
 
@@ -25,6 +25,21 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== location.origin && !HOSTS.includes(url.hostname)) return;
   if (url.pathname.endsWith("/sw.js")) return;
+
+  // ฟอนต์ ไลบรารีภายนอก และไฟล์นิ่ง (รูป/ไอคอน/vendor) ไม่เปลี่ยนบ่อย: ใช้จากแคชทันทีโดยไม่ยิงเครือข่ายซ้ำ
+  const isStatic = HOSTS.includes(url.hostname) || /\/(vendor|assets)\//.test(url.pathname) || /\.(webp|png|svg|woff2)$/.test(url.pathname);
+  if (isStatic) {
+    event.respondWith(
+      caches.open(VERSION).then(async (cache) => {
+        const hit = await cache.match(req);
+        if (hit) return hit;
+        const res = await fetch(req);
+        if (res && (res.ok || res.type === "opaque")) cache.put(req, res.clone());
+        return res;
+      })
+    );
+    return;
+  }
 
   // ใช้ของในเครื่องก่อนแล้วอัปเดตเบื้องหลัง (ครั้งถัดไปจะได้ของใหม่)
   event.respondWith(

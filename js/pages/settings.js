@@ -172,7 +172,7 @@ XF.boot("settings", function () {
             <label class="field"><span>K</span><input type="number" min="0" step="0.1" data-path="k" data-type="number"></label>
           </div>
           <div class="small muted" style="margin:12px 0 6px">เลือกสูตรปุ๋ยที่ใส่ในถังนี้ (กรอก N-P-K เองได้ถ้าใช้สูตรอื่น)</div>
-          <div class="product-grid">${XF.FERT_PRODUCTS.map(
+          <div class="product-grid">${XF.allProducts().map(
             (p) => `<button type="button" class="product ${t.product === p.id ? "active" : ""}" data-product="${p.id}"><img src="${XF.productImage(p.id)}" alt="" loading="lazy">${esc(p.name)}</button>`
           ).join("")}</div>
           <div class="form-actions"><button class="btn">บันทึกถัง ${i}</button></div>
@@ -186,7 +186,7 @@ XF.boot("settings", function () {
       form.addEventListener("input", () => (box.dataset.dirty = "1"));
       $$("[data-product]", form).forEach((btn) =>
         btn.addEventListener("click", () => {
-          const p = XF.FERT_PRODUCTS.find((x) => x.id === btn.dataset.product);
+          const p = XF.allProducts().find((x) => x.id === btn.dataset.product);
           XF.fillForm(form, { ...XF.readForm(form), product: p.id, n: p.n, p: p.p, k: p.k });
           $$("[data-product]", form).forEach((b) => b.classList.toggle("active", b === btn));
           const img = $("img", form);
@@ -205,6 +205,50 @@ XF.boot("settings", function () {
     });
   }
 
+  // ---------------------------------------------------------------- สูตรปุ๋ยของฉัน (ฟอร์มเพิ่ม/แก้/ลบอยู่ใน js/products.js ใช้ร่วมกับหน้าคำนวณ)
+  const canEditProducts = () => XF.isOwner || XF.isAdmin;
+  const ratioText = XF.productForm.ratioText;
+  const formOpts = { tanks: () => (down.settings || {}).tanks || {} };
+  const openProduct = (id) => XF.productForm.open(id, formOpts);
+  const deleteProduct = (id) => XF.productForm.remove(id, formOpts);
+  function renderMyProducts() {
+    const box = $("#myProducts");
+    if (!box) return;
+    const mine = XF.allProducts().filter((p) => p.custom);
+    const editable = canEditProducts();
+    box.innerHTML = `
+      <div class="row between">
+        <div class="card-title" style="margin:0">สูตรปุ๋ยของฉัน</div>
+        ${editable ? '<button type="button" class="btn sm" id="addProduct">+ เพิ่มสูตรปุ๋ย</button>' : ""}
+      </div>
+      <p class="small muted" style="margin:6px 0 8px">เพิ่มสูตรปุ๋ยที่ไม่มีในรายการของระบบ ใส่รูป ชื่อ และสัดส่วน N-P-K เพื่อใช้เลือกใส่ถังและให้หน้าคำนวณนำไปแนะนำ</p>
+      ${
+        mine.length
+          ? `<div class="list">${mine
+              .map(
+                (p) => `<div class="list-item" data-pid="${esc(p.id)}">
+                  <img class="myprod-img" src="${XF.productImage(p.id)}" alt="">
+                  <div class="grow"><b>${esc(p.name)}</b>
+                    <div class="small muted">N-P-K ${fmt(p.n, 1)}-${fmt(p.p, 1)}-${fmt(p.k, 1)} · สัดส่วน ${ratioText(p.n, p.p, p.k)}</div></div>
+                  ${editable ? '<button type="button" class="btn ghost sm" data-edit>แก้ไข</button><button type="button" class="btn ghost sm" data-del>ลบ</button>' : ""}
+                </div>`
+              )
+              .join("")}</div>`
+          : '<div class="empty">ยังไม่มีสูตรที่เพิ่มเอง</div>'
+      }`;
+    if (!editable) return;
+    $("#addProduct", box).addEventListener("click", () => openProduct(null));
+    $$("[data-pid]", box).forEach((row) => {
+      const id = row.dataset.pid;
+      $("[data-edit]", row).addEventListener("click", () => openProduct(id));
+      $("[data-del]", row).addEventListener("click", () => deleteProduct(id));
+    });
+  }
+
+  XF.watchProducts(() => {
+    renderMyProducts();
+    renderTanks();
+  });
   // ---------------------------------------------------------------- ตำแหน่งสวน
   XF.farmMap.init();
   $("#farmForm").addEventListener("submit", async (e) => {

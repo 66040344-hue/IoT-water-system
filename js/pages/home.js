@@ -26,12 +26,117 @@ XF.boot(VIEW_ONLY ? "view" : "home", function () {
     return ["🌥️", "–"];
   };
 
+  // ---------------------------------------------------------------- ท้องฟ้าตามช่วงเวลาจริง (เวลาประเทศไทย)
+  // แบ่ง 8 ช่วงจากเวลาอาทิตย์ขึ้น-ตกของพิกัดสวน (ถ้ายังไม่มีพยากรณ์ใช้ 06:00 / 18:00)
+  const PHASES = {
+    predawn: { label: "เช้ามืด", greet: "สวัสดีตอนเช้ามืด" },
+    morning: { label: "เช้า", greet: "สวัสดีตอนเช้า" },
+    late: { label: "สาย", greet: "สวัสดีตอนสาย" },
+    noon: { label: "เที่ยง", greet: "สวัสดีตอนเที่ยง" },
+    afternoon: { label: "บ่าย", greet: "สวัสดีตอนบ่าย" },
+    sunset: { label: "ใกล้ค่ำ", greet: "สวัสดีตอนใกล้ค่ำ" },
+    dusk: { label: "ค่ำ", greet: "สวัสดีตอนค่ำ" },
+    night: { label: "กลางคืน", greet: "สวัสดียามค่ำคืน" },
+  };
+
+  function bangkokMinutes() {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+    const h = +parts.find((p) => p.type === "hour").value % 24;
+    return h * 60 + +parts.find((p) => p.type === "minute").value;
+  }
+
+  function skyState() {
+    const hm = (iso) => {
+      const [h, m] = String(iso).slice(11, 16).split(":").map(Number);
+      return h * 60 + m;
+    };
+    const d = forecastData && forecastData.daily;
+    let rise = 360;
+    let set = 1080;
+    if (d && d.sunrise && d.sunrise[0] && d.sunset && d.sunset[0]) {
+      rise = hm(d.sunrise[0]);
+      set = hm(d.sunset[0]);
+    }
+    const n = bangkokMinutes();
+    const noon = (rise + set) / 2;
+    let phase = "night";
+    if (n >= rise - 90 && n < rise) phase = "predawn";
+    else if (n >= rise && n < rise + 150) phase = "morning";
+    else if (n >= rise + 150 && n < noon - 45) phase = "late";
+    else if (n >= noon - 45 && n < noon + 45) phase = "noon";
+    else if (n >= noon + 45 && n < set - 90) phase = "afternoon";
+    else if (n >= set - 90 && n < set) phase = "sunset";
+    else if (n >= set && n < set + 90) phase = "dusk";
+
+    // ดวงอาทิตย์เคลื่อนเป็นโค้งจากขอบฟ้าตะวันออกไปตะวันตก ดวงจันทร์ใช้ช่วงกลางคืน
+    const sunUp = n >= rise && n <= set;
+    const t = Math.min(1, Math.max(0, (n - rise) / (set - rise)));
+    const nightLen = 1440 - set + rise;
+    const tn = Math.min(1, Math.max(0, (((n - set) % 1440) + 1440) % 1440 / nightLen));
+    const moonUp = !sunUp || n - set < 20;
+    const cloudBy = { 0: 0.12, 1: 0.35, 2: 0.6, 3: 0.88 };
+    const code = forecastData && forecastData.current ? forecastData.current.weather_code : 0;
+    const cloud = code in cloudBy ? cloudBy[code] : code >= 45 ? 0.95 : 0.6;
+    const stars = { night: 1, dusk: 0.7, predawn: 0.6, sunset: 0.08 }[phase] || 0;
+    return {
+      phase,
+      sx: 10 + 80 * t,
+      sy: 80 - 64 * Math.sin(Math.PI * t),
+      sunO: sunUp ? 1 : 0,
+      mx: 12 + 76 * tn,
+      my: 80 - 62 * Math.sin(Math.PI * tn),
+      moonO: moonUp ? 1 : 0,
+      stars: stars * (1 - cloud * 0.6),
+      cloud,
+    };
+  }
+
+  // ดวงจันทร์ตามข้างขึ้นข้างแรมจริง (รอบ 29.53 วัน นับจากวันเดือนดับ 6 ม.ค. 2000)
+  function moonSvg() {
+    const p = ((((Date.now() - Date.UTC(2000, 0, 6, 18, 14)) / 86400000) % 29.530588) + 29.530588) % 29.530588 / 29.530588;
+    const r = 20;
+    const c = 24;
+    const k = Math.cos(2 * Math.PI * p);
+    const rx = Math.abs(k) * r;
+    const lit = `M${c},${c - r} A${r},${r} 0 0 1 ${c},${c + r} A${rx.toFixed(2)},${r} 0 0 ${k > 0 ? 0 : 1} ${c},${c - r} Z`;
+    return `<svg viewBox="0 0 48 48" width="48" height="48"><circle cx="${c}" cy="${c}" r="${r}" fill="rgba(210,225,255,.16)"/>
+      <path d="${lit}" fill="#f6f1dc" transform="${p > 0.5 ? `rotate(180 ${c} ${c})` : ""}"/></svg>`;
+  }
+
+  function renderSky() {
+    const hero = $(".hero");
+    if (!hero) return;
+    let sky = $(".sky", hero);
+    if (!sky) {
+      sky = document.createElement("div");
+      sky.className = "sky";
+      sky.setAttribute("aria-hidden", "true");
+      sky.innerHTML = '<div class="sky-stars"></div><div class="sky-stars b"></div><div class="sky-sun"></div><div class="sky-moon"></div>' +
+        '<div class="sky-cloud c1"></div><div class="sky-cloud c2"></div><div class="sky-cloud c3"></div>';
+      hero.prepend(sky);
+    }
+    const s = skyState();
+    hero.dataset.phase = s.phase;
+    const st = hero.style;
+    st.setProperty("--sx", s.sx.toFixed(1));
+    st.setProperty("--sy", s.sy.toFixed(1));
+    st.setProperty("--mx", s.mx.toFixed(1));
+    st.setProperty("--my", s.my.toFixed(1));
+    st.setProperty("--sun-o", s.sunO);
+    st.setProperty("--moon-o", s.moonO);
+    st.setProperty("--stars", s.stars.toFixed(2));
+    st.setProperty("--cloud", s.cloud.toFixed(2));
+    const moon = $(".sky-moon", sky);
+    if (!moon.firstChild) moon.innerHTML = moonSvg();
+    return s;
+  }
+
   function renderHero() {
-    const hour = new Date().getHours();
-    const part = hour < 5 ? "ยามค่ำ" : hour < 12 ? "ยามเช้า" : hour < 17 ? "ยามบ่าย" : hour < 20 ? "ยามเย็น" : "ยามค่ำ";
+    const s = renderSky() || { phase: "morning" };
+    const ph = PHASES[s.phase];
     $("#farmPill").innerHTML = `${XF.icon("pin")}<span>${esc(farm.name || "ยังไม่ได้ตั้งชื่อสวน")}</span>`;
-    $("#today").textContent = XF.fmtDate(Date.now());
-    $("#greet").textContent = `สวัสดี${part} คุณ ${XF.user.name}`;
+    $("#today").textContent = `${XF.fmtDate(Date.now())} · ช่วง${ph.label}`;
+    $("#greet").textContent = `${ph.greet} คุณ ${XF.user.name}`;
   }
 
   function spareValue() {
@@ -43,6 +148,47 @@ XF.boot(VIEW_ONLY ? "view" : "home", function () {
     return { name: cfg.name || "ช่องสำรอง", unit: cfg.unit || "", value: num(cfg.out_min) + ratio * (num(cfg.out_max, 100) - num(cfg.out_min)) };
   }
 
+  // ---------------------------------------------------------------- VPD และความต้องการน้ำโดยประมาณ
+  // VPD (kPa) = ความดันไอน้ำอิ่มตัว × (1 − RH/100) ใช้สูตร Tetens
+  const vpdOf = (t, rh) => 0.6108 * Math.exp((17.27 * t) / (t + 237.3)) * (1 - Math.min(100, Math.max(0, rh)) / 100);
+  const vpdLevel = (v) =>
+    v < 0.4 ? ["ต่ำมาก", "ชื้นจัด พืชคายน้ำน้อย เสี่ยงโรคราได้ง่าย"] :
+    v < 0.8 ? ["ต่ำ", "คายน้ำน้อย"] :
+    v < 1.6 ? ["เหมาะสม", "พืชคายน้ำได้ดี"] :
+    v < 2.4 ? ["สูง", "อากาศแห้ง พืชคายน้ำมาก"] : ["สูงมาก", "อากาศแห้งจัด เสี่ยงเครียดน้ำ"];
+  const pos = (v, fallback) => (num(v, 0) > 0 ? num(v) : fallback);
+
+  // ลิตร/ต้น/วัน = ETo (มม./วัน) × Kc × พื้นที่ทรงพุ่ม (ตร.ม.) ÷ ประสิทธิภาพระบบให้น้ำ
+  // ETo มาจากพยากรณ์ของพิกัดสวน ส่วนค่าจากเซนเซอร์ปรับตามอัตราส่วน VPD ในแปลง ÷ VPD ของพยากรณ์ขณะนี้
+  function waterDemand(vpdSensor, vpdForecast) {
+    const st = down.settings || {};
+    const eto = forecastData && forecastData.daily && forecastData.daily.et0_fao_evapotranspiration ? +forecastData.daily.et0_fao_evapotranspiration[0] : NaN;
+    if (!Number.isFinite(eto)) return null;
+    const diameter = pos(st.canopy_diameter_m, 8);
+    const kc = pos(st.crop_kc, 0.9);
+    const eff = pos(st.irrigation_efficiency, 90);
+    const forecastL = (eto * kc * Math.PI * Math.pow(diameter / 2, 2)) / (eff / 100);
+    let sensorL = null;
+    if (vpdSensor != null && vpdForecast != null) {
+      const ratio = Math.min(1.6, Math.max(0.6, vpdSensor / Math.max(vpdForecast, 0.2)));
+      sensorL = forecastL * ratio;
+    }
+    return { eto, diameter, kc, eff, forecastL, sensorL };
+  }
+
+  // น้ำต่อต้นที่ตารางเวลาของวันนี้จะให้ (เฉลี่ยถ่วงน้ำหนักด้วยจำนวนต้น)
+  function plannedTodayPerTree() {
+    const day = new Date().getDay();
+    const schedules = Object.values(down.schedules || {});
+    let litres = 0;
+    let trees = 0;
+    Object.entries(down.zones || {}).forEach(([id, z]) => {
+      const runs = schedules.filter((s) => s.enabled && s.zone === id && (s.days >> day) & 1).length;
+      litres += runs * num(z.water_per_tree_l) * num(z.trees);
+      trees += num(z.trees);
+    });
+    return trees && litres > 0 ? litres / trees : null;
+  }
   function renderEnv() {
     const s = up.sensors || {};
     const tiles = [
@@ -61,9 +207,44 @@ XF.boot(VIEW_ONLY ? "view" : "home", function () {
       const r = (s.rs485 || {})[k] || {};
       tiles.push({ icon: "chart", label: rsCfg[k].name || k, value: online && r.ok ? fmt(r.value, 1) : "–", unit: rsCfg[k].unit || "" });
     });
+    // VPD + ความต้องการน้ำต่อต้น (จากเซนเซอร์ในแปลงเป็นหลัก ถ้าไม่มีใช้ค่าพยากรณ์ของพิกัดสวน)
+    const fcur = forecastData && forecastData.current;
+    const vpdSensor = online && s.dht_ok && Number.isFinite(+s.temp) && Number.isFinite(+s.humi) ? vpdOf(+s.temp, +s.humi) : null;
+    const vpdForecast = fcur && Number.isFinite(+fcur.temperature_2m) && Number.isFinite(+fcur.relative_humidity_2m) ? vpdOf(+fcur.temperature_2m, +fcur.relative_humidity_2m) : null;
+    const vpdMain = vpdSensor != null ? vpdSensor : vpdForecast;
+    const lvl = vpdMain != null ? vpdLevel(vpdMain) : null;
+    tiles.push({
+      icon: "gauge",
+      wide: true,
+      label: "VPD ความต้องการไอน้ำของอากาศ",
+      value: vpdMain != null ? fmt(vpdMain, 2) : "–",
+      unit: "kPa",
+      note: vpdMain == null ? "รอข้อมูลเซนเซอร์หรือพยากรณ์" : `${lvl[0]} · ${lvl[1]}<br>${vpdSensor != null ? "จากเซนเซอร์ในแปลง" : "จากพยากรณ์อากาศ"}${vpdSensor != null && vpdForecast != null ? ` · พยากรณ์ ${fmt(vpdForecast, 2)}` : ""}`,
+    });
+    const dem = waterDemand(vpdSensor, vpdForecast);
+    const planned = plannedTodayPerTree();
+    if (dem) {
+      const main = dem.sensorL != null ? dem.sensorL : dem.forecastL;
+      tiles.push({
+        icon: "drop",
+        wide: true,
+        label: "ความต้องการน้ำโดยประมาณ ต่อต้น",
+        value: fmt(main, 0),
+        unit: "ลิตร/ต้น/วัน",
+        note: `${dem.sensorL != null ? "ปรับตามเซนเซอร์ในแปลง" : "จากพยากรณ์อากาศ"}${dem.sensorL != null ? ` · ตามพยากรณ์ ${fmt(dem.forecastL, 0)}` : ""}${planned != null ? `<br>ตารางวันนี้ให้ ${fmt(planned, 0)} ลิตร/ต้น` : ""}`,
+      });
+    } else {
+      tiles.push({ icon: "drop", wide: true, label: "ความต้องการน้ำโดยประมาณ ต่อต้น", value: "–", unit: "ลิตร/ต้น/วัน", note: "รอข้อมูลพยากรณ์ของพิกัดสวน" });
+    }
+    const noteEl = $("#envNote");
+    if (noteEl) {
+      noteEl.innerHTML = dem
+        ? `ประมาณการ: ETo ${fmt(dem.eto, 1)} มม./วัน (พยากรณ์) × Kc ${fmt(dem.kc, 2)} × พื้นที่ทรงพุ่ม ⌀${fmt(dem.diameter, 1)} ม. ÷ ประสิทธิภาพ ${fmt(dem.eff, 0)}% ใช้เป็นแนวทาง ไม่ใช่ค่าวัดจริง ปรับ Kc และขนาดทรงพุ่มได้ที่ <a href="settings.html#sprinkler">ตั้งค่า &gt; หัวสปริงเกอร์</a>`
+        : "";
+    }
     $("#env").innerHTML = tiles
       .map(
-        (t) => `<div class="card"><span class="stat-ico">${XF.icon(t.icon)}</span>
+        (t) => `<div class="card${t.wide ? " wide" : ""}"><span class="stat-ico">${XF.icon(t.icon)}</span>
           <div><div class="stat-label">${esc(t.label)}</div>
           <div class="num">${t.value}<small>${esc(t.unit)}</small></div>
           ${t.note ? `<div class="small muted">${t.note}</div>` : ""}</div></div>`
@@ -201,7 +382,7 @@ XF.boot(VIEW_ONLY ? "view" : "home", function () {
       $("#forecast").innerHTML = 'ยังไม่ได้กำหนดตำแหน่งสวน <a href="settings.html#farm">ตั้งค่าตำแหน่ง</a>';
       return;
     }
-    const key = `xf_wx_${lat.toFixed(3)}_${lng.toFixed(3)}`;
+    const key = `xf_wx3_${lat.toFixed(3)}_${lng.toFixed(3)}`;
     if (key === weatherKey) return;
     weatherKey = key;
     try {
@@ -212,13 +393,15 @@ XF.boot(VIEW_ONLY ? "view" : "home", function () {
         const url =
           `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
           "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m" +
-          "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum" +
+          "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,et0_fao_evapotranspiration,sunrise,sunset" +
           "&timezone=Asia%2FBangkok&forecast_days=7";
         const res = await fetch(url);
         if (!res.ok) throw new Error("HTTP " + res.status);
         forecastData = await res.json();
         sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), data: forecastData }));
       }
+      renderEnv();
+      renderHero();
       renderForecast();
     } catch (err) {
       console.error(err);
@@ -250,4 +433,6 @@ XF.boot(VIEW_ONLY ? "view" : "home", function () {
   });
   // ประวัติเพิ่มเมื่อจบงาน: รีเฟรชยอดวันนี้เป็นระยะ
   setInterval(renderToday, 60000);
+  // ท้องฟ้าขยับตามเวลา (ดวงอาทิตย์/จันทร์ และเปลี่ยนช่วงเวลา) ทุก 1 นาที
+  setInterval(renderHero, 60000);
 });

@@ -26,7 +26,40 @@
     { id: "nutri-phoz-k-6-24-6", name: "Nutri-Phoz K 6-24-6", n: 6, p: 24, k: 6 },
     { id: "nutri-phoz-n-20-4-4", name: "Nutri-Phoz N 20-4-4", n: 20, p: 4, k: 4 },
   ];
-  XF.productImage = (id) => `assets/fert/${id}.webp`;
+  // สูตรปุ๋ยที่ผู้ใช้เพิ่มเอง: /devices/<id>/products/<pid> = { name, n, p, k } ส่วนรูปเก็บแยกที่ /devices/<id>/product_img/<pid> (data URL ที่ย่อแล้ว)
+  // แยกออกจาก /down เพื่อไม่ให้ทุกหน้าที่ฟัง /down ต้องดาวน์โหลดรูปไปด้วย
+  XF.customProducts = {};
+  XF.customImages = {};
+  XF.PRODUCT_PLACEHOLDER =
+    "data:image/svg+xml;utf8," +
+    encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#e4edf1"/><path d="M26 10h12v6l5 8v26a4 4 0 0 1-4 4H25a4 4 0 0 1-4-4V24l5-8z" fill="none" stroke="#587079" stroke-width="3" stroke-linejoin="round"/><path d="M24 36h16" stroke="#587079" stroke-width="3"/></svg>'
+    );
+  XF.isBuiltinProduct = (id) => XF.FERT_PRODUCTS.some((p) => p.id === id);
+  // สูตรทั้งหมด = สูตรที่มากับระบบ + สูตรที่ผู้ใช้เพิ่ม (เรียงตามชื่อ)
+  XF.allProducts = () => {
+    const mine = Object.entries(XF.customProducts || {})
+      .filter(([, p]) => p && typeof p.name === "string" && p.name)
+      .map(([id, p]) => ({ id, name: p.name, n: XF.num(p.n), p: XF.num(p.p), k: XF.num(p.k), custom: true }))
+      .sort((a, b) => a.name.localeCompare(b.name, "th"));
+    return XF.FERT_PRODUCTS.concat(mine);
+  };
+  XF.productImage = (id) => (XF.isBuiltinProduct(id) ? `assets/fert/${id}.webp` : XF.customImages[id] || XF.PRODUCT_PLACEHOLDER);
+  // เริ่มฟังสูตรของผู้ใช้ (เรียกเฉพาะหน้าที่ต้องใช้: คำนวณ ควบคุม ตั้งค่า) cb ถูกเรียกทุกครั้งที่สูตรหรือรูปเปลี่ยน
+  XF.watchProducts = (cb) => {
+    const offA = XF.store.watch(XF.root + "/products", (v) => {
+      XF.customProducts = v || {};
+      if (cb) cb();
+    });
+    const offB = XF.store.watch(XF.root + "/product_img", (v) => {
+      XF.customImages = v || {};
+      if (cb) cb();
+    });
+    return () => {
+      offA();
+      offB();
+    };
+  };
 
   // บัญชีที่ผู้ดูแลสร้างให้ใช้ "ชื่อผู้ใช้" แทนอีเมล (ระบบแปลงเป็นอีเมลภายในให้เอง)
   XF.USER_DOMAIN = "xactflow.app";
@@ -59,6 +92,8 @@
       manual_max_min: 120,
       base_water_per_sqm: 5,
       irrigation_efficiency: 90,
+      canopy_diameter_m: 8,
+      crop_kc: 0.9,
       flow: { f1: { k: 450, full_lpm: 0 }, f2: { k: 450, full_lpm: 0 }, f3: { k: 450, full_lpm: 0 } },
       tanks: {
         t1: { name: "ถัง 1", product: "nutri-phoz-n-20-4-4", n: 20, p: 4, k: 4 },
@@ -116,6 +151,7 @@
     chart: '<path d="M4 19V9M10 19V5M16 19v-7M21 19H3"/>',
     shield: '<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
     eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    gauge: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-6"/><path d="M7 8.5l.01 0M12 6l.01 0M17 8.5l.01 0"/>',
     moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   };
@@ -221,23 +257,56 @@
   };
 
   // สถานะสดของอุปกรณ์ + ตรวจว่าออนไลน์ (ESP32 ส่ง ts ทุก 2-5 วินาที)
+  // ออนไลน์ = ได้รับสถานะภายใน 45 วินาที (ตู้ส่งทุก 15 วินาทีตอนว่าง 2 วินาทีตอนทำงาน)
+  // แท็บที่ถูกซ่อนจะหยุดรับข้อมูลสด เพื่อไม่ให้เสียทราฟฟิกโดยไม่มีใครดู แล้วกลับมารับต่อเมื่อเปิดแท็บ
   XF.watchUp = (cb) => {
     let last = null;
+    let off = null;
+    let timer = null;
     const emit = () => {
       const up = last || {};
-      cb(up, !!up.ts && Date.now() / 1000 - up.ts < 30);
+      cb(up, !!up.ts && Date.now() / 1000 - up.ts < 45);
     };
-    const off = store.watch(XF.root + "/up", (v) => {
-      last = v;
-      emit();
-    });
-    const timer = setInterval(emit, 5000);
-    return () => {
-      off();
+    const start = () => {
+      if (off) return;
+      off = store.watch(XF.root + "/up", (v) => {
+        last = v;
+        emit();
+      });
+      timer = setInterval(emit, 5000);
+    };
+    const stop = () => {
+      if (off) off();
+      off = null;
       clearInterval(timer);
+      timer = null;
     };
+    const onVisibility = () => (document.hidden ? stop() : start());
+    document.addEventListener("visibilitychange", onVisibility);
+    if (!document.hidden) start();
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      stop();
+    };
+  };  XF.relayOn = (up, relay) => (((up || {}).relays || 0) >> relay.bit) & 1;
+
+  // ปริมาณน้ำ/ปุ๋ยสด: น้ำไม่มี flow meter จึงประมาณจากอัตราไหลของปั๊ม (สูตรเดียวกับเฟิร์มแวร์) ส่วนปุ๋ยวัดจริงจาก flow meter ของแต่ละถัง
+  // zones เป็น array (จาก XF.sortedZones) หรือ object ที่ key เป็นรหัสโซนก็ได้
+  XF.liveFlow = (up, zones, settings, online) => {
+    up = up || {};
+    const s = up.sensors || {};
+    const job = up.job || {};
+    const pumpOn = !!online && !!XF.relayOn(up, XF.RELAYS[0]);
+    let waterLpm = 0;
+    if (pumpOn) {
+      const zone = job.running && job.zone ? (Array.isArray(zones) ? zones.find((z) => z.id === job.zone) : (zones || {})[job.zone]) : null;
+      waterLpm = zone ? XF.zoneFlowLpm(zone, settings) : XF.num(((settings || {}).water_pump || {}).lpm);
+    }
+    const tanks = [1, 2, 3].map((i) => (online ? Math.max(0, XF.num((s.flow_lpm || {})["f" + i])) : 0));
+    const fertLpm = tanks.reduce((a, b) => a + b, 0);
+    const mlPerL = waterLpm > 0 && fertLpm > 0.005 ? (fertLpm * 1000) / waterLpm : 0;
+    return { pumpOn, waterLpm, tanks, fertLpm, mlPerL };
   };
-  XF.relayOn = (up, relay) => (((up || {}).relays || 0) >> relay.bit) & 1;
 
   // ---------------------------------------------------------------- แผนที่แปลง (ใช้ทั้งหน้าหลักและหน้าตั้งค่า)
   // สีแรกเป็นของขอบเขตสวน ที่เหลือเป็นของโซนตามลำดับ

@@ -81,6 +81,46 @@ XF.boot("control", function () {
     });
   }
 
+  // ---------------------------------------------------------------- มอนิเตอร์น้ำและปุ๋ยสด
+  let today = null; // { water, fert, n } รวมของวันนี้จากประวัติ
+  async function loadToday() {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const rows = await store.range(XF.root + "/history", "start", start.getTime() / 1000, Date.now() / 1000 + 60).catch(() => []);
+    today = { water: rows.reduce((s, r) => s + num(r.water_l), 0), fert: rows.reduce((s, r) => s + num(r.fert_ml), 0), n: rows.length };
+    renderMonitor();
+  }
+
+  function renderMonitor() {
+    const lf = XF.liveFlow(up, down.zones, down.settings, online);
+    const job = up.job || {};
+    const dash = (v, d) => (online ? v : "–");
+    const perTank = lf.tanks
+      .map((v, i) => (v > 0.005 ? `${esc(tankName(i + 1))} ${fmt(v, 2)}` : ""))
+      .filter(Boolean)
+      .join(" · ");
+    const waterText = !online ? "–" : lf.pumpOn ? fmt(lf.waterLpm, 0) : "0";
+    $("#liveMon").innerHTML = `
+      <div class="row between">
+        <h2 class="card-title" style="margin:0">มอนิเตอร์น้ำและปุ๋ย</h2>
+        <span class="badge ${online ? (running() ? "warn" : "on") : "soft"}">${!online ? "ออฟไลน์" : running() ? "กำลังทำงาน" : "ว่าง"}</span>
+      </div>
+      <div class="mon-grid">
+        <div class="mon water"><div class="stat-label">น้ำที่จ่าย (ประมาณ)</div>
+          <div class="num">${waterText}<small>ล./นาที</small></div>
+          <div class="small muted">คำนวณจากอัตราปั๊ม ไม่มี flow meter น้ำ</div></div>
+        <div class="mon fert"><div class="stat-label">ปุ๋ยที่จ่าย (วัดจริง)</div>
+          <div class="num">${dash(fmt(lf.fertLpm, 2))}<small>ล./นาที</small></div>
+          <div class="small muted">${perTank || "ไม่มีปุ๋ยไหลขณะนี้"}</div></div>
+        <div class="mon"><div class="stat-label">สัดส่วนผสม</div>
+          <div class="num">${online && lf.mlPerL > 0 ? fmt(lf.mlPerL, 1) : "–"}<small>มล./ลิตร</small></div>
+          <div class="small muted">ปุ๋ยต่อน้ำ 1 ลิตรขณะนี้</div></div>
+      </div>
+      ${job.running ? `<div class="mon-job small">งานนี้ <b>${esc(job.zone_name || job.zone)}</b> · น้ำ <b>${fmt(job.water_done_l, 0)}</b>/${fmt(job.water_target_l, 0)} ลิตร${
+        job.fert_target_ml > 0 ? ` · ปุ๋ย <b>${fmt(job.fert_done_ml, 0)}</b>/${fmt(job.fert_target_ml, 0)} มล.` : ""
+      }</div>` : ""}
+      <div class="mon-today small muted">${today ? `วันนี้รวม น้ำ <b>${fmt(today.water, 0)}</b> ลิตร · ปุ๋ย <b>${XF.fmtVolume(today.fert)}</b> · ${fmt(today.n)} ครั้ง` : "กำลังรวมยอดวันนี้…"}</div>`;
+  }
   // ---------------------------------------------------------------- การ์ดโซน: กำหนดน้ำ/ปุ๋ย เลือกถัง แล้วสั่งงาน
   function tankPicker(zoneId, z) {
     return `<div class="ctl-tanks" role="radiogroup" aria-label="ถังปุ๋ย">${[1, 2, 3]
@@ -307,7 +347,10 @@ XF.boot("control", function () {
     }
     renderRelays();
     renderFlows();
+    renderMonitor();
   });
+  XF.watchProducts(() => zonesKey && renderZones()); // รูปสูตรปุ๋ยของผู้ใช้มาทีหลังข้อมูลโซน
+  let wasRunning = null;
   XF.watchUp((v, isOnline) => {
     up = v;
     online = isOnline;
@@ -316,5 +359,10 @@ XF.boot("control", function () {
     renderJob();
     renderRelays();
     renderFlows();
+    renderMonitor();
+    // งานจบ: รวมยอดวันนี้ใหม่ (ประวัติถูกเขียนหลังจบงานเล็กน้อย)
+    if (wasRunning === true && !running()) setTimeout(loadToday, 3000);
+    wasRunning = running();
   });
+  loadToday();
 });

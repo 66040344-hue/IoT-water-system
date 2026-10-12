@@ -46,6 +46,12 @@
     return `<text x="${(sx + dx).toFixed(1)}" y="${(sy + dy).toFixed(1)}" text-anchor="${anchor}" class="${cls}">${content}</text>`;
   };
 
+  // ตัวเลขสดบนผัง: สร้างเป็นข้อความว่างไว้ก่อน แล้วเติมค่าใน applyState
+  const val = (id, cls, x, y, z, dx, dy, anchor = "middle") => {
+    const [sx, sy] = P(x, y, z);
+    return `<text id="dg-val-${esc(id)}" x="${(sx + dx).toFixed(1)}" y="${(sy + dy).toFixed(1)}" text-anchor="${anchor}" class="dg-val ${cls}"></text>`;
+  };
+
   // ป้ายสถานะ ON/OFF ของอุปกรณ์ไฟฟ้า
   const badge = (id, x, y, z, dx, dy, label) => {
     const [sx, sy] = P(x, y, z);
@@ -222,6 +228,11 @@
     }
     plots.forEach((p) => (body += p.label));
 
+    // ตัวเลขสด: อัตราน้ำ (ประมาณ) อัตราปุ๋ยแต่ละถัง (วัดจริง) สัดส่วนผสม และความคืบหน้าของโซนที่กำลังทำงาน
+    body += val("water", "water", 120, MAIN_Y, 24, -10, 72);
+    TANK_X.forEach((x, i) => (body += val("t" + (i + 1), "fert", x, TANK_Y, 0, 0, 32)));
+    body += val("mix", "fert", INJECT_X, 168, 20, 52, 38);
+    plots.forEach((p) => (body += val("z-" + p.zone.id, "water", PLOT_X + PLOT_W, p.y + (p.yc - p.y), 6, 14, 30, "start")));
     const pad = 22;
     const vb = [bounds.x0 - pad, bounds.y0 - pad - 26, bounds.x1 - bounds.x0 + pad * 2 + 70, bounds.y1 - bounds.y0 + pad * 2 + 40];
     return `<svg class="dg-svg" viewBox="${vb.map((v) => v.toFixed(0)).join(" ")}" role="img" aria-label="ผังระบบให้น้ำและปุ๋ย">
@@ -238,7 +249,7 @@
   }
 
   // ---------------------------------------------------------------- อัปเดตสถานะ
-  function applyState(root, zones, up, online) {
+  function applyState(root, zones, up, online, settings) {
     const mask = online ? up.relays || 0 : 0;
     const on = (bit) => ((mask >> bit) & 1) === 1;
     const water = on(0);
@@ -278,6 +289,23 @@
       if (tile) tile.classList.toggle("on", active && water);
     });
 
+    const lf = XF.liveFlow(up, zones, settings, online);
+    const setVal = (id, content) => {
+      const el = root.querySelector("#dg-val-" + CSS.escape(id));
+      if (el) el.textContent = content || "";
+    };
+    setVal("water", lf.pumpOn && lf.waterLpm > 0 ? `≈ ${fmt(lf.waterLpm, 0)} ล./นาที` : "");
+    lf.tanks.forEach((v, i) => setVal("t" + (i + 1), v > 0.005 ? `${fmt(v, 2)} ล./นาที` : ""));
+    setVal("mix", lf.mlPerL > 0 ? `ผสม ≈ ${fmt(lf.mlPerL, 1)} มล./ลิตร` : "");
+    zones.forEach((z) =>
+      setVal(
+        "z-" + z.id,
+        online && job.running && job.zone === z.id
+          ? `น้ำ ${fmt(job.water_done_l, 0)}/${fmt(job.water_target_l, 0)} ล.${job.fert_target_ml > 0 ? ` · ปุ๋ย ${fmt(job.fert_done_ml, 0)}/${fmt(job.fert_target_ml, 0)} มล.` : ""}`
+          : ""
+      )
+    );
+
     const devices = { p1: 0, p2: 1, v: 2, t1: 3, t2: 4, t3: 5, f: 6 };
     Object.keys(devices).forEach((id) => {
       const active = on(devices[id]);
@@ -300,6 +328,6 @@
       structureKey = key;
       root.innerHTML = build(zones, tanks);
     }
-    applyState(root, zones, up || {}, online);
+    applyState(root, zones, up || {}, online, settings || {});
   };
 })();

@@ -6,6 +6,7 @@ XF.boot("calc", function () {
   let treeCount = 0;
   let ranked = []; // สูตรปุ๋ยเรียงจากใกล้เป้าหมายที่สุด
   let selectedProduct = ""; // สูตรที่ผู้ใช้เลือก (เริ่มจากสูตรที่แนะนำ)
+  let modalRender = null; // วาดรายการในหน้าต่างเลือกสูตรใหม่เมื่อสูตรของผู้ใช้เปลี่ยน
 
   const tanksHolding = (productId) => {
     const tanks = (down.settings || {}).tanks || {};
@@ -59,6 +60,12 @@ XF.boot("calc", function () {
       <h2>เลือกสูตรปุ๋ย</h2>
       <p class="small muted" style="margin:-8px 0 12px">เป้าหมาย N : P : K = <b>${r.N} : ${r.P} : ${r.K}</b> · เรียงจากใกล้เคียงที่สุด</p>
       <div class="pick-list" id="pickList"></div>
+      <div class="pick-add">
+        ${XF.isOwner || XF.isAdmin
+          ? `<button type="button" class="btn ghost block" id="addMine">+ เพิ่มปุ๋ยของคุณ</button>
+             <p class="small muted">ใส่รูป ชื่อ และสัดส่วน N-P-K ของปุ๋ยที่ไม่มีในรายการ · แก้ไขหรือลบสูตรได้ที่ ตั้งค่า &gt; ถังปุ๋ย</p>`
+          : `<p class="small muted">ต้องการเพิ่มสูตรปุ๋ยอื่น ให้เจ้าของสวนเพิ่มที่ ตั้งค่า &gt; ถังปุ๋ย</p>`}
+      </div>
       <div class="pick-foot"><button class="btn ghost" data-close>ยกเลิก</button><button class="btn" id="pickConfirm" style="flex:1"></button></div>`);
 
     function render() {
@@ -88,6 +95,20 @@ XF.boot("calc", function () {
       confirm.disabled = same;
     }
     render();
+    modalRender = () => document.body.contains(modal.el) && render();
+    const addBtn = $("#addMine", modal.el);
+    if (addBtn) {
+      addBtn.addEventListener("click", () =>
+        XF.productForm.open(null, {
+          tanks: () => (down.settings || {}).tanks || {},
+          // สูตรใหม่ถูกจัดอันดับเข้ารายการแล้ว (ตัวฟังสูตรด้านล่าง) เลือกให้อัตโนมัติและวาดรายการใหม่
+          onSaved: (pid) => {
+            if (ranked.some((p) => p.id === pid)) pending = pid;
+            render();
+          },
+        })
+      );
+    }
     $("#pickConfirm", modal.el).addEventListener("click", () => {
       selectedProduct = pending;
       modal.close();
@@ -162,7 +183,7 @@ XF.boot("calc", function () {
       irrigationEfficiency: num(settings.irrigation_efficiency, 90),
     });
     // แนะนำจากสูตรปุ๋ยทั้งหมดในรายการ โดยไม่ขึ้นกับว่าตอนนี้มีอยู่ในถังหรือไม่
-    ranked = XF.rankProducts(result.rate, XF.FERT_PRODUCTS);
+    ranked = XF.rankProducts(result.rate, XF.allProducts());
     selectedProduct = ranked[0].id;
     renderResult(soil !== null);
   }
@@ -186,8 +207,8 @@ XF.boot("calc", function () {
       </div>
       <div class="small muted">พิมพ์เมื่อ ${XF.fmtDate(Date.now())} ${XF.fmtTime(Date.now())} น. · ทรงพุ่ม ${fmt($("#canopyDiameter").value, 1)} ม. · ${fmt(treeCount)} ต้น</div>
 
-      <div class="row between" style="margin:14px 0 8px"><b>สัดส่วนธาตุอาหารเป้าหมาย (N : P : K)</b>
-        <span class="badge on" style="font-size:1rem">${rate.N} : ${rate.P} : ${rate.K}</span></div>
+      <div class="row between npk-head"><b>สัดส่วนธาตุอาหารเป้าหมาย (N : P : K)</b>
+        <span class="badge on npk-ratio">${rate.N} : ${rate.P} : ${rate.K}</span></div>
       <div class="npk-bar"><div class="npk-n" style="width:${nPct}%">N ${nPct}%</div><div class="npk-p" style="width:${pPct}%">P ${pPct}%</div><div class="npk-k" style="width:${kPct}%">K ${kPct}%</div></div>`;
 
     if (r.isStop) {
@@ -315,6 +336,14 @@ XF.boot("calc", function () {
   }
 
   $("#calculateBtn").addEventListener("click", calculate);
+  // สูตรที่ผู้ใช้เพิ่ม/ลบในหน้าตั้งค่า: จัดอันดับใหม่ทันทีถ้าคำนวณไปแล้ว
+  XF.watchProducts(() => {
+    if (!result) return;
+    ranked = XF.rankProducts(result.rate, XF.allProducts());
+    if (!ranked.some((p) => p.id === selectedProduct)) selectedProduct = ranked[0].id;
+    renderProductPicker();
+    if (modalRender) modalRender();
+  });
   store.watch(XF.root + "/down", (v) => {
     down = v || {};
     renderZonePresets();
