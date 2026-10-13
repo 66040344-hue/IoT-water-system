@@ -1,6 +1,6 @@
 // Service Worker: เก็บโครงหน้าเว็บ สคริปต์ และฟอนต์ไว้ในเครื่อง เปิดซ้ำเร็วและเปิดโครงหน้าได้แม้เน็ตหลุด
 // ข้อมูลสด (Firebase, Open-Meteo) ไม่ผ่าน SW จึงไม่ถูกแคช ถ้าแก้ไฟล์ในเว็บให้เปลี่ยน VERSION ด้านล่างทุกครั้งที่ deploy
-const VERSION = "xf-v22";
+const VERSION = "xf-v26";
 const SHELL = [
   "./", "index.html", "view.html", "login.html", "control.html", "calculator.html", "schedule.html", "history.html", "settings.html", "weather.html",
   "css/style.css", "js/theme.js", "js/config.js", "js/store.js", "js/app.js", "js/products.js", "icon.svg",

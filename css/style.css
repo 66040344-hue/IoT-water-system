@@ -4947,6 +4947,19 @@ body {
   padding: 0 4px 0 2px;
 }
 
+/* ช่องและกล่อง − / + ย่อได้ตามการ์ดเสมอ ไม่ดันเกินขอบ */
+.ctl-step-field,
+.ctl-steps > *,
+.ctl-stepper {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.ctl-stepper {
+  width: 100%;
+}
+
 @media (max-width: 480px) {
   .ctl-stepper button {
     width: 38px;
@@ -4956,7 +4969,7 @@ body {
 /* จอแคบ (เช่น 360px ลงไป): เรียงน้ำและปุ๋ยเป็นแถวละช่อง ได้พื้นที่เต็มความกว้างการ์ด */
 @media (max-width: 420px) {
   .ctl-steps {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .ctl-stepper {
@@ -5062,4 +5075,50 @@ body {
 
 .pick-add p {
   margin-top: 6px;
+}
+/* ฟอร์มตั้งเวลา: จัดทุกส่วนกึ่งกลาง */
+.sch-form {
+  text-align: center;
+}
+
+.sch-form h2 {
+  text-align: center;
+}
+
+.sch-form .field > span,
+.sch-form .ctl-label,
+.sch-form .hint {
+  display: block;
+  text-align: center;
+}
+
+.sch-form .seg {
+  display: flex;
+  width: 100%;
+}
+
+.sch-form .seg button {
+  flex: 1;
+  justify-content: center;
+}
+
+.sch-form #schDays {
+  justify-content: center;
+}
+
+.sch-form input[type="time"] {
+  text-align: center;
+}
+
+.sch-form .reco {
+  justify-content: center;
+  text-align: left;
+}
+
+.sch-form .pick-row {
+  text-align: left;
+}
+
+.sch-form .form-actions {
+  justify-content: center;
 }

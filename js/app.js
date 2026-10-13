@@ -94,7 +94,7 @@
       irrigation_efficiency: 90,
       canopy_diameter_m: 8,
       crop_kc: 0.9,
-      flow: { f1: { k: 450, full_lpm: 0 }, f2: { k: 450, full_lpm: 0 }, f3: { k: 450, full_lpm: 0 } },
+      flow: { f1: { k: 430, full_lpm: 0 }, f2: { k: 430, full_lpm: 0 }, f3: { k: 430, full_lpm: 0 } },
       tanks: {
         t1: { name: "ถัง 1", product: "nutri-phoz-n-20-4-4", n: 20, p: 4, k: 4 },
         t2: { name: "ถัง 2", product: "nutri-phoz-k-4-24-24", n: 4, p: 24, k: 24 },
