@@ -50,6 +50,11 @@ XF.boot("settings", function () {
     $("#accRole").value = XF.isOwner ? "เจ้าของสวน" : XF.ROLE_LABELS[XF.role] || "ผู้ใช้งาน";
     $("#accDevice").value = XF.deviceId;
 
+    // รายชื่อผู้เข้าถึงอุปกรณ์: แสดงเฉพาะเจ้าของสวนและผู้ดูแลระบบ (ผู้ใช้งานและผู้เข้าชมไม่ต้องเห็น)
+    const canSeeMembers = XF.isOwner || XF.isAdmin;
+    $("#membersCard").hidden = !canSeeMembers;
+    if (!canSeeMembers) return;
+
     const list = Object.keys(members || {}).map((uid) => ({ uid, ...members[uid] }));
     list.sort((a, b) => (a.joined || 0) - (b.joined || 0));
     $("#members").innerHTML = list
@@ -197,7 +202,10 @@ XF.boot("settings", function () {
       );
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        if (await XF.run(() => store.set(`${downPath}/settings/tanks/${key}`, XF.readForm(form)), "บันทึกถังปุ๋ยแล้ว")) {
+        const data = XF.readForm(form);
+        const prevProduct = (((down.settings || {}).tanks || {})[key] || {}).product;
+        if (await XF.run(() => store.set(`${downPath}/settings/tanks/${key}`, data), "บันทึกถังปุ๋ยแล้ว")) {
+          await XF.logTankProduct(+key.slice(1), prevProduct, data.product);
           delete box.dataset.dirty;
           renderTanks();
         }

@@ -149,7 +149,10 @@
     if (!confirm(`ลบสูตร "${p.name}"?${warn}`)) return;
     const updates = { [`products/${id}`]: null, [`product_img/${id}`]: null };
     used.forEach((i) => (updates[`down/settings/tanks/t${i}/product`] = null));
-    await XF.run(() => store.update(XF.root, updates), "ลบสูตรปุ๋ยแล้ว");
+    if (await XF.run(() => store.update(XF.root, updates), "ลบสูตรปุ๋ยแล้ว")) {
+      // ชื่อสูตรถูกเก็บในรายการเดิมแล้ว บันทึกการถอดสูตรออกจากถังเพื่อให้งานหลังจากนี้ไม่ถูกนับว่าใช้สูตรที่ลบ
+      for (const i of used) await XF.logTankProduct(i, id, "");
+    }
   }
 
   XF.productForm = { open, remove, ratioText };

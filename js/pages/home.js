@@ -349,7 +349,8 @@ XF.boot(VIEW_ONLY ? "view" : "home", function () {
     ]
       .filter(Boolean)
       .map((c) => `<span class="hero-chip">${c}</span>`)
-      .join("");
+      .join("") +
+      `<a class="hero-chip" data-allow href="weather.html">ดูรายละเอียดสภาพอากาศ ›</a>`;
 
     const names = ["วันนี้", "พรุ่งนี้"];
     const count = showAllDays ? daily.time.length : 4;

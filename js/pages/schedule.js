@@ -297,6 +297,7 @@ XF.boot("schedule", function () {
         data.end = end;
       }
       let tankUpdate = null;
+      const prevTankProduct = tankProduct(st.tank);
       if (st.fert) {
         if (st.fertMl <= 0) return XF.toast("กรุณากำหนดปุ๋ยต่อต้น", true);
         data.fert_per_tree_ml = st.fertMl;
@@ -306,7 +307,11 @@ XF.boot("schedule", function () {
         if (p && !tankMatches()) tankUpdate = { name: tankName(st.tank), product: p.id, n: p.n, p: p.p, k: p.k };
       }
       const ok = await XF.run(async () => {
-        if (tankUpdate) await store.set(`${XF.root}/down/settings/tanks/t${st.tank}`, tankUpdate);
+        if (tankUpdate) {
+          await store.set(`${XF.root}/down/settings/tanks/t${st.tank}`, tankUpdate);
+          // บันทึกทันทีที่ถังเปลี่ยนสำเร็จ แม้บันทึกตารางเวลาด้านล่างจะไม่สำเร็จ ประวัติจะได้ตรงกับค่าในถังจริง
+          await XF.logTankProduct(st.tank, prevTankProduct, tankUpdate.product);
+        }
         return id ? store.set(`${path}/${id}`, data) : store.push(path, data);
       }, "บันทึกแล้ว");
       if (ok) modal.close();

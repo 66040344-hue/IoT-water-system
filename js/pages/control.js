@@ -303,7 +303,12 @@ XF.boot("control", function () {
       ? "🔒 กำลังทำงานตามคำสั่ง สวิตช์ถูกล็อกจนกว่างานจะจบ"
       : mode() === "manual" ? "เปิด/ปิดทีละตัวได้ ระวังอย่าให้ปั๊มเดินโดยไม่มีน้ำ" : "🔒 เปลี่ยนเป็นโหมด Manual เพื่อเปิด/ปิดอุปกรณ์ทีละตัว";
     $$("[data-relay]").forEach((input) =>
-      input.addEventListener("change", () => XF.run(() => store.set(`${controlPath}/relays/${input.dataset.relay}`, input.checked)))
+      input.addEventListener("change", () =>
+        XF.run(async () => {
+          await store.set(`${controlPath}/relays/${input.dataset.relay}`, input.checked);
+          XF.logAction("relay", { relay: input.dataset.relay, on: input.checked });
+        })
+      )
     );
   }
 
@@ -323,7 +328,10 @@ XF.boot("control", function () {
     btn.addEventListener("click", () => {
       if (btn.dataset.mode === mode()) return;
       // เปลี่ยนโหมดทุกครั้งให้เริ่มจากรีเลย์ปิดทั้งหมด
-      XF.run(() => store.update(controlPath, { mode: btn.dataset.mode, relays: allRelaysOff() }));
+      XF.run(async () => {
+        await store.update(controlPath, { mode: btn.dataset.mode, relays: allRelaysOff() });
+        XF.logAction("mode", { mode: btn.dataset.mode });
+      });
     })
   );
 

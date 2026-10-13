@@ -3,6 +3,73 @@ XF.boot("history", function () {
   const { store, $, $$, esc, fmt, num } = XF;
   const STATUS = { done: ["สำเร็จ", "on"], stopped: ["ถูกสั่งหยุด", "warn"], error: ["ผิดพลาด", ""] };
   let rows = [];
+  let tankSettings = {};
+  let actions = []; // /action_log ที่ใกล้ช่วงเวลาที่เลือก เรียงตามเวลา
+
+  // ผู้สั่งงาน: ESP32 ไม่รู้ว่าใครสั่ง จึงจับคู่จาก /action_log (งานตามตารางเวลาไม่มีผู้สั่ง)
+  //  - starter = คำสั่งเริ่มล่าสุดก่อนงานเริ่ม (run ของโซนเดียวกันภายใน 2 ชม. เผื่อรอคิว / สวิตช์รีเลย์ภายใน 10 นาที)
+  //  - stopper = คำสั่งหยุดที่ใกล้เวลางานจบ (เฉพาะงานที่ถูกสั่งหยุด)
+  function usersOf(r) {
+    const out = { starter: "", stopper: "" };
+    const start = num(r.start) || num(r.end);
+    const end = num(r.end) || start;
+    if (r.source !== "schedule") {
+      const pick = (pred) => actions.filter((a) => pred(a) && num(a.at) <= start + 30).pop();
+      const hit =
+        r.source === "manual" && !r.zone
+          ? pick((a) => a.type === "relay" && a.on !== false && num(a.at) >= start - 600)
+          : pick((a) => a.type === "run" && a.zone === r.zone && num(a.at) >= start - 7200);
+      if (hit) out.starter = hit.name || "";
+    }
+    if (r.status === "stopped") {
+      const stop = actions
+        .filter((a) => (a.type === "stop" || a.type === "mode" || (a.type === "relay" && a.on === false)) && Math.abs(num(a.at) - end) <= 90)
+        .sort((a, b) => Math.abs(num(a.at) - end) - Math.abs(num(b.at) - end))[0];
+      if (stop) out.stopper = stop.name || "";
+    }
+    return out;
+  }
+
+  let productLog = {}; // tank(1..3) -> [{ at, product, name, prev, prev_name }] เรียงตามเวลา
+
+  function indexLog(v) {
+    productLog = {};
+    Object.values(v || {}).forEach((e) => {
+      if (!e || !(e.tank >= 1 && e.tank <= 3)) return;
+      (productLog[e.tank] = productLog[e.tank] || []).push(e);
+    });
+    Object.values(productLog).forEach((list) => list.sort((a, b) => num(a.at) - num(b.at)));
+  }
+
+  // สูตรปุ๋ยของงาน: ดูจากประวัติการเปลี่ยนสูตรของถัง (/product_log) ว่า ณ เวลาเริ่มงานถังนั้นใช้สูตรอะไร
+  // ถังที่ยังไม่เคยมีบันทึกการเปลี่ยนเลย ใช้สูตรที่ตั้งไว้ในถังตอนนี้ (assumed = true แสดงเครื่องหมาย *)
+  function productOf(r) {
+    const none = { id: "", name: "", assumed: false };
+    if (!r.tank) return none;
+    const list = productLog[r.tank] || [];
+    const t = num(r.start) || num(r.end);
+    let id = "";
+    let logged = "";
+    let assumed = false;
+    if (!list.length) {
+      id = (tankSettings["t" + r.tank] || {}).product || "";
+      assumed = true;
+    } else {
+      let hit = null;
+      list.forEach((e) => {
+        if (num(e.at) <= t) hit = e;
+      });
+      if (hit) [id, logged] = [hit.product || "", hit.name || ""];
+      else [id, logged] = [list[0].prev || "", list[0].prev_name || ""]; // งานก่อนการเปลี่ยนครั้งแรก = สูตรเดิมก่อนเปลี่ยน
+    }
+    if (!id) return { ...none, assumed };
+    const p = XF.allProducts().find((x) => x.id === id);
+    return { id, name: p ? p.name : logged || id, assumed };
+  }
+  const productLabel = (r) => {
+    const p = productOf(r);
+    return p.name ? esc(p.name) + (p.assumed ? ' <span class="muted" title="ยังไม่มีบันทึกการเปลี่ยนสูตร แสดงสูตรที่ตั้งไว้ในถังขณะนี้">*</span>' : "") : "";
+  };
 
   const isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -22,6 +89,10 @@ XF.boot("history", function () {
     try {
       rows = await store.range(XF.root + "/history", "start", from.getTime() / 1000, to.getTime() / 1000 + 60);
       rows.sort((a, b) => b.start - a.start);
+      // ผู้สั่งงานเป็นข้อมูลเสริม: โหลดไม่ได้ก็ยังแสดงประวัติได้ตามปกติ (เผื่อ 2 ชม. ก่อนช่วง เพราะงานอาจรอคิวหลังสั่ง)
+      actions = (await store.range(XF.root + "/action_log", "at", from.getTime() / 1000 - 7200, to.getTime() / 1000 + 120).catch(() => [])).sort(
+        (a, b) => num(a.at) - num(b.at)
+      );
       render();
     } catch (err) {
       console.error(err);
@@ -38,6 +109,7 @@ XF.boot("history", function () {
       <div class="card"><div class="stat-label">ปุ๋ยรวม</div><div class="num" style="font-size:1.8rem;color:var(--orange-text)">${XF.fmtVolume(fert)}</div></div>`;
 
     renderBreakdown();
+    renderFertByZone();
 
     if (!rows.length) {
       $("#rows").innerHTML = '<div class="empty">ไม่มีประวัติการทำงานในช่วงเวลานี้</div>';
@@ -48,15 +120,18 @@ XF.boot("history", function () {
       <tbody>${rows
         .map((r) => {
           const [label, cls] = STATUS[r.status] || [r.status || "–", "soft"];
+          const who = usersOf(r);
           return `<tr>
             <td style="white-space:nowrap">${XF.fmtDate(r.start * 1000, { day: "2-digit", month: "2-digit", year: "numeric" })}</td>
             <td style="white-space:nowrap">${XF.fmtTime(r.start * 1000)} – ${XF.fmtTime(r.end * 1000)}</td>
             <td style="white-space:nowrap">${XF.fmtDuration(r.end - r.start)}</td>
             <td>${esc(r.zone_name || r.zone || "–")}</td>
-            <td>${esc(XF.SOURCE_LABELS[r.source] || r.source || "–")}</td>
+            <td>${esc(XF.SOURCE_LABELS[r.source] || r.source || "–")}${who.starter ? `<div class="small muted">โดย ${esc(who.starter)}</div>` : ""}</td>
             <td class="r">${fmt(r.water_l, 1)}</td>
-            <td class="r">${fmt(r.fert_ml, 0)}${r.tank ? `<div class="small muted">${esc(r.tank_name || "ถัง " + r.tank)}</div>` : ""}</td>
-            <td><span class="badge ${cls}">${esc(label)}</span>${r.note ? `<div class="small muted">${esc(r.note)}</div>` : ""}</td>
+            <td class="r">${fmt(r.fert_ml, 0)}${r.tank ? `<div class="small muted">${esc(r.tank_name || "ถัง " + r.tank)}</div>` : ""}${
+              productLabel(r) ? `<div class="small">${productLabel(r)}</div>` : ""
+            }</td>
+            <td><span class="badge ${cls}">${esc(label)}</span>${r.note ? `<div class="small muted">${esc(r.note)}</div>` : ""}${who.stopper ? `<div class="small muted">หยุดโดย ${esc(who.stopper)}</div>` : ""}</td>
           </tr>`;
         })
         .join("")}</tbody></table>`;
@@ -111,6 +186,61 @@ XF.boot("history", function () {
       ${dayBars}`;
   }
 
+  // ปุ๋ยที่ใช้ของแต่ละถัง แยกตามสวน (โซน): กลุ่มตามสวน แล้วแสดงปริมาณของแต่ละถังในสวนนั้น
+  function renderFertByZone() {
+    const box = $("#fertByZone");
+    const used = rows.filter((r) => num(r.fert_ml) > 0);
+    box.hidden = !used.length;
+    if (!used.length) return;
+
+    const zones = new Map();
+    const tankTotals = new Map();
+    used.forEach((r) => {
+      const zKey = r.zone || r.zone_name || "-";
+      const prod = productOf(r);
+      // แยกตามสูตรด้วย: ถังเดียวกันที่เปลี่ยนสูตรระหว่างช่วงจะไม่ถูกรวมกัน
+      const tKey = `${r.tank || 0}|${prod.id}`;
+      const tName = (r.tank ? r.tank_name || "ถัง " + r.tank : "ไม่ระบุถัง") + (prod.name ? ` · ${prod.name}` : "");
+      const ml = num(r.fert_ml);
+      if (!zones.has(zKey)) zones.set(zKey, { name: r.zone_name || r.zone || "-", total: 0, tanks: new Map() });
+      const z = zones.get(zKey);
+      z.total += ml;
+      if (!z.tanks.has(tKey)) z.tanks.set(tKey, { key: tKey, name: tName, jobs: 0, ml: 0 });
+      const t = z.tanks.get(tKey);
+      t.jobs++;
+      t.ml += ml;
+      if (!tankTotals.has(tKey)) tankTotals.set(tKey, { key: tKey, name: tName, ml: 0 });
+      tankTotals.get(tKey).ml += ml;
+    });
+
+    const grand = [...zones.values()].reduce((s, z) => s + z.total, 0);
+    const zoneList = [...zones.values()].sort((a, b) => String(a.name).localeCompare(String(b.name), "th"));
+    const body = zoneList
+      .map((z) => {
+        const tanks = [...z.tanks.values()].sort((a, b) => parseInt(a.key, 10) - parseInt(b.key, 10) || a.name.localeCompare(b.name, "th"));
+        return (
+          `<tr class="sub"><td><b>${esc(z.name)}</b></td><td></td><td class="r"><b>${fmt(z.total, 0)}</b></td><td class="r muted">${fmt((z.total / grand) * 100, 0)}%</td></tr>` +
+          tanks
+            .map(
+              (t) => `<tr><td class="muted" style="padding-left:24px">${esc(t.name)}</td><td class="r">${fmt(t.jobs)}</td>
+              <td class="r">${fmt(t.ml, 0)}</td><td class="r muted">${XF.fmtVolume(t.ml)}</td></tr>`
+            )
+            .join("")
+        );
+      })
+      .join("");
+    const totals = [...tankTotals.values()]
+      .sort((a, b) => parseInt(a.key, 10) - parseInt(b.key, 10) || a.name.localeCompare(b.name, "th"))
+      .map((t) => `<span class="badge soft">${esc(t.name)}: ${esc(XF.fmtVolume(t.ml))}</span>`)
+      .join(" ");
+
+    box.innerHTML = `<div class="card-title" style="margin:0">ปุ๋ยที่ใช้แยกตามสวนและถัง</div>
+      <div class="row wrap" style="gap:6px;margin-top:8px">${totals}</div>
+      <div class="table-wrap" style="margin-top:8px"><table class="data">
+        <thead><tr><th>สวน / ถังปุ๋ย</th><th class="r">ครั้ง</th><th class="r">ปุ๋ยที่ใช้ (มล.)</th><th class="r">สัดส่วน / ปริมาณ</th></tr></thead>
+        <tbody>${body}</tbody></table></div>`;
+  }
+
   $("#sendLine").addEventListener("click", async (e) => {
     const btn = e.currentTarget;
     const [from, to] = currentRange();
@@ -129,10 +259,10 @@ XF.boot("history", function () {
       const d = new Date(sec * 1000);
       return `${isoDate(d)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
     };
-    const lines = [["เริ่ม", "สิ้นสุด", "ระยะเวลา (วินาที)", "โซน", "ที่มา", "น้ำ (ลิตร)", "ปุ๋ย (มล.)", "ถังปุ๋ย", "สถานะ", "หมายเหตุ"].map(cell).join(",")];
+    const lines = [["เริ่ม", "สิ้นสุด", "ระยะเวลา (วินาที)", "โซน", "ที่มา", "น้ำ (ลิตร)", "ปุ๋ย (มล.)", "ถังปุ๋ย", "สูตรปุ๋ย", "สถานะ", "หมายเหตุ", "ผู้สั่ง", "ผู้สั่งหยุด"].map(cell).join(",")];
     rows.forEach((r) =>
       lines.push(
-        [stamp(r.start), stamp(r.end), Math.round(r.end - r.start), r.zone_name || r.zone, XF.SOURCE_LABELS[r.source] || r.source, r.water_l, r.fert_ml, r.tank_name || "", (STATUS[r.status] || [r.status])[0], r.note]
+        [stamp(r.start), stamp(r.end), Math.round(r.end - r.start), r.zone_name || r.zone, XF.SOURCE_LABELS[r.source] || r.source, r.water_l, r.fert_ml, r.tank_name || "", productOf(r).name, (STATUS[r.status] || [r.status])[0], r.note, usersOf(r).starter, usersOf(r).stopper]
           .map(cell)
           .join(",")
       )
@@ -157,6 +287,17 @@ XF.boot("history", function () {
   $("#fromDate").addEventListener("change", load);
   $("#toDate").addEventListener("change", load);
   $("#exportCsv").addEventListener("click", exportCsv);
+
+  // สูตรของผู้ใช้ และสูตรที่ตั้งไว้ในถังตอนนี้ (ใช้แสดงชื่อปุ๋ย) โหลดมาแล้ววาดใหม่
+  XF.watchProducts(() => rows.length && render());
+  store.watch(XF.root + "/down/settings/tanks", (v) => {
+    tankSettings = v || {};
+    if (rows.length) render();
+  });
+  store.watch(XF.root + "/product_log", (v) => {
+    indexLog(v);
+    if (rows.length) render();
+  });
 
   load();
   // งานใหม่ที่เพิ่งจบจะปรากฏเองโดยไม่ต้องรีเฟรชหน้า: โหลดซ้ำเฉพาะตอนสถานะงานเปลี่ยนจากกำลังทำ -> ว่าง (ไม่ดึงทุก 60 วินาที)

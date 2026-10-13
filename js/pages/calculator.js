@@ -326,10 +326,12 @@ XF.boot("calc", function () {
           updates[`zones/${id}/tank`] = tank;
         }
       });
+      const prevProduct = (((down.settings || {}).tanks || {})["t" + tank] || {}).product;
       if (!tankMatches()) {
         updates[`settings/tanks/t${tank}`] = { name: tankLabel(tank), product: product.id, n: product.n, p: product.p, k: product.k };
       }
       if (await XF.run(() => store.update(XF.root + "/down", updates), "บันทึกค่าให้โซนแล้ว")) {
+        await XF.logTankProduct(tank, prevProduct, product.id);
         location.href = "control.html";
       }
     });

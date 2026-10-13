@@ -45,6 +45,27 @@
     return XF.FERT_PRODUCTS.concat(mine);
   };
   XF.productImage = (id) => (XF.isBuiltinProduct(id) ? `assets/fert/${id}.webp` : XF.customImages[id] || XF.PRODUCT_PLACEHOLDER);
+  // บันทึกว่าถังปุ๋ยเปลี่ยนสูตร ณ เวลานี้ (ที่ /product_log) หน้าประวัติใช้ดูว่างานแต่ละครั้งใช้ปุ๋ยสูตรอะไร
+  // เก็บชื่อสูตรไว้ในรายการด้วย เพื่อให้ยังอ่านได้แม้สูตรถูกลบหรือเปลี่ยนชื่อภายหลัง
+  // บันทึกไม่สำเร็จไม่ถือเป็นข้อผิดพลาดของการตั้งค่า (เงียบไว้) · prevId = สูตรเดิมของถังก่อนเปลี่ยน ("" ถ้าไม่มี)
+  XF.logTankProduct = async (tank, prevId, newId) => {
+    prevId = prevId || "";
+    newId = newId || "";
+    if (!(tank >= 1 && tank <= 3) || prevId === newId) return;
+    const nameOf = (id) => ((XF.allProducts().find((p) => p.id === id) || {}).name || "").slice(0, 40);
+    try {
+      await XF.store.push(XF.root + "/product_log", {
+        tank,
+        product: newId,
+        name: nameOf(newId),
+        prev: prevId,
+        prev_name: nameOf(prevId),
+        at: Math.floor(Date.now() / 1000),
+      });
+    } catch (err) {
+      console.warn("บันทึกประวัติการเปลี่ยนสูตรไม่สำเร็จ", err);
+    }
+  };
   // เริ่มฟังสูตรของผู้ใช้ (เรียกเฉพาะหน้าที่ต้องใช้: คำนวณ ควบคุม ตั้งค่า) cb ถูกเรียกทุกครั้งที่สูตรหรือรูปเปลี่ยน
   XF.watchProducts = (cb) => {
     const offA = XF.store.watch(XF.root + "/products", (v) => {
@@ -240,7 +261,27 @@
     return { waterL, fertMl, flow, seconds, tank: zone.tank || 1 };
   };
 
-  XF.sendCmd = (cmd) => store.set(XF.root + "/down/control/cmd", { id: String(Date.now()), ...cmd });
+  // บันทึกว่าใครสั่งอะไร ณ เวลาไหน (/action_log) หน้าประวัติใช้จับคู่กับงานที่ ESP32 บันทึก เพราะ ESP32 ไม่รู้ว่าใครเป็นผู้สั่ง
+  // บันทึกไม่สำเร็จไม่กระทบคำสั่งจริง · type: run | stop | relay | mode
+  XF.logAction = async (type, extra) => {
+    if (!XF.user) return;
+    try {
+      await XF.store.push(XF.root + "/action_log", {
+        uid: XF.user.uid,
+        name: String(XF.user.name || "").slice(0, 40),
+        type,
+        at: Math.floor(Date.now() / 1000),
+        ...extra,
+      });
+    } catch (err) {
+      console.warn("บันทึกผู้สั่งงานไม่สำเร็จ", err);
+    }
+  };
+
+  XF.sendCmd = async (cmd) => {
+    await store.set(XF.root + "/down/control/cmd", { id: String(Date.now()), ...cmd });
+    XF.logAction(cmd.type, cmd.zone ? { zone: String(cmd.zone).slice(0, 32) } : null);
+  };
 
   // Cloud Functions ของอุปกรณ์นี้ (แจ้งเตือน/สรุปผลทาง LINE) ข้อความผิดพลาดมาจากเซิร์ฟเวอร์เป็นภาษาไทยอยู่แล้ว
   XF.lineCall = (name, data) => store.call(name, { device: XF.deviceId, ...data });
